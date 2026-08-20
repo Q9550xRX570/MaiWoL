@@ -152,7 +152,6 @@ class MainActivity : ComponentActivity() {
         isAppUnlocked.value = !isAppLockEnabled
         updateWindowSecurity(isAppLockEnabled)
 
-        // Açılışta tema rengini doğrudan pencere seviyesine ata (FLAG_SECURE koyu tema desteği)
         val appThemeSetting = prefs.getString("app_theme", "system") ?: "system"
         val systemInDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val isDark = when (appThemeSetting) {
@@ -364,18 +363,10 @@ fun HomeScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    // SADECE PROJEDE VAR OLAN 3 DİL SEÇENEĞİ
     val currentLangText = when (appLanguage) {
-        "tr" -> "Türkçe"
-        "en" -> "English"
-        "de" -> "Deutsch"
-        "es" -> "Español"
-        "fr" -> "Français"
-        "it" -> "Italiano"
-        "pt" -> "Português"
-        "ru" -> "Русский"
-        "zh" -> "中文"
-        "ja" -> "日本語"
-        "ar" -> "العربية"
+        "tr" -> stringResource(R.string.turkish)
+        "en" -> stringResource(R.string.english)
         else -> stringResource(R.string.system_default)
     }
 
@@ -453,7 +444,7 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.weight(1f))
 
-                            // KART ÖZELLEŞTİRME (App Theme'in tam üstünde)
+                            // KART ÖZELLEŞTİRME
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -911,6 +902,7 @@ fun HomeScreen(
                         )
                     }
 
+                    // SADECE SİSTEM VARSAYILANI, TÜRKÇE VE İNGİLİZCE DİYALOĞU
                     if (showLanguageDialog) {
                         LanguageSelectionDialog(
                             currentLangTag = appLanguage,
@@ -957,6 +949,53 @@ fun HomeScreen(
             }
         }
     }
+}
+
+// SADE VE TERTEMİZ DİL SEÇİMİ (Sadece var olan 3 seçenek)
+@Composable
+fun LanguageSelectionDialog(
+    currentLangTag: String,
+    onDismiss: () -> Unit,
+    onLanguageSelected: (String) -> Unit
+) {
+    val options = listOf(
+        "" to stringResource(R.string.system_default),
+        "tr" to stringResource(R.string.turkish),
+        "en" to stringResource(R.string.english)
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.select_language)) },
+        text = {
+            Column {
+                options.forEach { (tag, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = (currentLangTag == tag),
+                                onClick = { onLanguageSelected(tag) }
+                            )
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (currentLangTag == tag),
+                            onClick = { onLanguageSelected(tag) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -3792,67 +3831,6 @@ fun ThemeSelectionDialog(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(text = label, style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        }
-    )
-}
-
-@Composable
-fun LanguageSelectionDialog(
-    currentLangTag: String,
-    onDismiss: () -> Unit,
-    onLanguageSelected: (String) -> Unit
-) {
-    val options = listOf(
-        "" to stringResource(R.string.system_default),
-        "tr" to "Türkçe",
-        "en" to "English",
-        "de" to "Deutsch",
-        "es" to "Español",
-        "fr" to "Français",
-        "it" to "Italiano",
-        "pt" to "Português",
-        "ru" to "Русский",
-        "zh" to "中文 (简体)",
-        "ja" to "日本語",
-        "ar" to "العربية"
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.select_language)) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 360.dp)
-            ) {
-                LazyColumn {
-                    itemsIndexed(options) { _, (tag, label) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .selectable(
-                                    selected = (currentLangTag == tag),
-                                    onClick = { onLanguageSelected(tag) }
-                                )
-                                .padding(vertical = 10.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = (currentLangTag == tag),
-                                onClick = { onLanguageSelected(tag) }
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = label, style = MaterialTheme.typography.bodyLarge)
-                        }
                     }
                 }
             }
