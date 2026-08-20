@@ -1,0 +1,39 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 1. Dış Çember (İçi Şeffaf) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:pathData="M 12,2 A 10,10 0 1,1 11.99,2 Z" />
+
+    <!-- 2. Orta Arka Plan Altıgeni -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.0"
+        android:strokeAlpha="0.6"
+        android:pathData="M 12,7 L 15.3,8.9 L 15.3,12.8 L 12,14.8 L 8.6,12.8 L 8.6,8.9 Z" />
+
+    <!-- 3. Orijinal Shizuku Kedisi Dış Çizgisi -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 2.5,11.5 C 3.0,10.0 3.8,9.0 4.5,8.5 C 5.0,9.5 5.8,10.8 6.5,11.5 C 7.8,12.2 9.2,12.8 10.5,13.0 C 12.5,13.0 14.2,13.0 15.5,13.0 C 14.8,14.2 14.2,15.5 13.5,16.5 C 13.0,18.0 11.8,20.2 10.0,21.8 C 12.0,20.8 4.0,21.2 2.8,15.5 C 2.0,16.0 2.0,13.5 2.5,11.5 Z" />
+
+    <!-- 4. Kedi Gözleri -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 5.8,13.5 A 0.7,0.7 0 1,1 5.79,13.5 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 10.4,16.1 A 0.7,0.7 0 1,1 10.39,16.1 Z" />
+
+</vector>
