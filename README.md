@@ -53,7 +53,7 @@ The app only establishes network connections directly to the target IP addresses
 🛠️ Build from Source
 code
 Bash
-git clone https://github.com/YOUR_USERNAME/MaiWOL.git
+git clone https://github.com/Q9550xRX570/MaiWOL.git
 cd MaiWOL
 ./gradlew assembleRelease
 The APK will be generated under app/build/outputs/apk/release/.
