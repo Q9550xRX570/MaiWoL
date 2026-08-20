@@ -1,0 +1,12 @@
+MaiWoL is a modern, lightweight, and privacy-focused Wake-on-LAN Android application built with Jetpack Compose.
+
+Features include:
+• LAN Broadcast and WAN/DDNS Magic Packet dispatch
+• SecureOn 6-byte password support
+• Internal Date/Time & Weekly Recurring Scheduling
+• External automation support (Tasker / MacroDroid / ADB)
+• Real-time status polling via ICMP & OS service ports
+• Card privacy customization (Mask/Hide sensitive network details)
+• SHA-256 PIN & Biometric App Lock with FLAG_SECURE window protection
+• Shizuku / ADB integration for MAC discovery
+• 100% FOSS with zero trackers and zero telemetry.

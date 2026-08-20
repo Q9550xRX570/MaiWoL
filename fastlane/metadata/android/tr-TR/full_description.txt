@@ -1,0 +1,11 @@
+MaiWoL, yerel ağınızdaki (LAN) veya internet üzerindeki (WAN / DDNS) bilgisayar ve sunucularınızı tek dokunuşla uyandırmanızı sağlayan modern, güvenli ve %100 açık kaynaklı (FOSS) bir Wake-on-LAN uygulamasıdır.
+
+Öne Çıkan Özellikler:
+• Güçlü WoL Motoru: Çoklu Magic Packet gönderimi ve SecureOn şifre desteği.
+• Dahili Otomasyon: Belirli tarih/saat için tek seferlik veya haftalık tekrarlı zamanlayıcılar.
+• Harici Otomasyon: Tasker, MacroDroid ve ADB broadcast komutları ile uzaktan tetikleme.
+• Canlı Durum Takibi: Bilgisayarın açık veya kapalı olduğunu ICMP ping ve servis portlarıyla canlı izleme.
+• Kart Özelleştirme & Gizlilik: Kartlardaki MAC, IP ve Port bilgilerini gizleme veya sansürleme (*****).
+• Banka Seviyesi Güvenlik: SHA-256 PIN ve Biyometrik kilit, arka planda ekran gizleme (FLAG_SECURE).
+• Shizuku Entegrasyonu: Ağ taramasında MAC adreslerini otomatik okuma.
+• %100 Gizlilik: Sıfır reklam, sıfır Google izleyicisi, sıfır telemetri.

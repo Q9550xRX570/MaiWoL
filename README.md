@@ -29,6 +29,15 @@ A modern, privacy-focused, and 100% Free and Open Source (FOSS) Wake-on-LAN Andr
 
 ---
 
+## 🧪 Help Test on Google Play (Closed Beta)
+
+We are currently running the **Google Play Closed Testing** phase. If you want to install and test **MaiWoL** directly through the Google Play Store and help us publish it publicly, we would love your support!
+
+👉 **How to join:**
+Send a quick email to **[gursoymustafaerdem@gmail.com](mailto:gursoymustafaerdem@gmail.com)** with the subject `MaiWoL Beta Tester` (mentioning your Google Play account email), and we will immediately add you to the Google Play tester list!
+
+---
+
 ## 📥 Downloads & VirusTotal Verifications
 
 | Architecture | File | SHA-256 Checksum | VirusTotal |
