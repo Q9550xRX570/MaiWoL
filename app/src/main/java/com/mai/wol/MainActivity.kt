@@ -35,6 +35,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
@@ -107,6 +109,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipFile
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -389,6 +392,9 @@ fun HomeScreen(
     onThemeChange: (String) -> Unit
 ) {
     val devices by viewModel.devices.collectAsState()
+    val customGroups by viewModel.customGroups.collectAsState()
+    val hideGroupCounts by viewModel.hideGroupCounts.collectAsState()
+    val showBatchWakeButton by viewModel.showBatchWakeButton.collectAsState()
     val packetCount by viewModel.packetCount.collectAsState()
     val statusCheckInterval by viewModel.statusCheckInterval.collectAsState()
     val totalWakeUps by viewModel.totalWakeUps.collectAsState()
@@ -406,6 +412,32 @@ fun HomeScreen(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("wol_settings", Context.MODE_PRIVATE) }
     val appLanguage = remember { prefs.getString("app_language", "") ?: "" }
+
+    var selectedGroup by remember { mutableStateOf("") }
+    val allGroups = remember(devices, customGroups) {
+        val deviceGroups = devices.map { it.groupName.trim() }.filter { it.isNotBlank() }
+        val ordered = mutableListOf<String>()
+        customGroups.forEach { g -> if (g.isNotBlank() && !ordered.contains(g)) ordered.add(g) }
+        deviceGroups.forEach { g -> if (g.isNotBlank() && !ordered.contains(g)) ordered.add(g) }
+        ordered.toList()
+    }
+
+    var currentGroupsList by remember(allGroups) { mutableStateOf(allGroups) }
+    var draggedGroupIndex by remember { mutableStateOf<Int?>(null) }
+    var dragGroupAccumulatedOffset by remember { mutableFloatStateOf(0f) }
+
+    fun moveGroupItem(fromIndex: Int, toIndex: Int) {
+        if (fromIndex in currentGroupsList.indices && toIndex in currentGroupsList.indices) {
+            currentGroupsList = currentGroupsList.toMutableList().apply {
+                val item = removeAt(fromIndex)
+                add(toIndex, item)
+            }
+        }
+    }
+
+    var showAddGroupDialog by remember { mutableStateOf(false) }
+    var groupToManage by remember { mutableStateOf<String?>(null) }
+    var deviceToChangeGroup by remember { mutableStateOf<DeviceEntity?>(null) }
 
     LaunchedEffect(devices, statusCheckInterval) {
         if (statusCheckInterval > 0) {
@@ -452,16 +484,23 @@ fun HomeScreen(
         focusManager.clearFocus()
     }
 
-    val filteredDevices = remember(currentList, searchQuery) {
+    val filteredDevices = remember(currentList, searchQuery, selectedGroup) {
         val trimmedQuery = searchQuery.trim()
-        if (trimmedQuery.isEmpty()) {
+        val groupFiltered = if (selectedGroup.isBlank()) {
             currentList
         } else {
-            currentList.filter { device ->
+            currentList.filter { it.groupName.equals(selectedGroup, ignoreCase = true) }
+        }
+
+        if (trimmedQuery.isEmpty()) {
+            groupFiltered
+        } else {
+            groupFiltered.filter { device ->
                 device.name.contains(trimmedQuery, ignoreCase = true) ||
                         device.macAddress.contains(trimmedQuery, ignoreCase = true) ||
                         device.localIp.contains(trimmedQuery, ignoreCase = true) ||
-                        device.ipAddress.contains(trimmedQuery, ignoreCase = true)
+                        device.ipAddress.contains(trimmedQuery, ignoreCase = true) ||
+                        device.groupName.contains(trimmedQuery, ignoreCase = true)
             }
         }
     }
@@ -479,8 +518,10 @@ fun HomeScreen(
     var deviceToEdit by remember { mutableStateOf<DeviceEntity?>(null) }
     var deviceToDelete by remember { mutableStateOf<DeviceEntity?>(null) }
     var deviceToSchedule by remember { mutableStateOf<DeviceEntity?>(null) }
+    var showWakeAllConfirmDialog by remember { mutableStateOf(false) }
     var showPacketCountSettingsDialog by remember { mutableStateOf(false) }
     var showStatusIntervalDialog by remember { mutableStateOf(false) }
+    var showGroupCustomizationDialog by remember { mutableStateOf(false) }
     var showCardCustomizationDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -518,91 +559,151 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.titleLarge
                             )
 
-                            ListItem(
-                                headlineContent = { Text(stringResource(R.string.website)) },
-                                supportingContent = {
-                                    Column {
-                                        Text(
-                                            text = stringResource(R.string.website_description),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = "maiwol.com",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                },
-                                trailingContent = {
-                                    Icon(
-                                        imageVector = Icons.Default.OpenInNew,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            // 1. WEB SİTESİ
+                            Row(
                                 modifier = Modifier
-                                    .padding(horizontal = 8.dp)
+                                    .fillMaxWidth()
                                     .clickable {
                                         try {
                                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://maiwol.com"))
                                             context.startActivity(intent)
                                         } catch (_: Exception) {}
                                     }
-                            )
+                                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Public,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.website),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(R.string.website_description),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "maiwol.com",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.OpenInNew,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
 
-                            ListItem(
-                                headlineContent = { Text(stringResource(R.string.wol_packet_count)) },
-                                supportingContent = {
-                                    Column {
-                                        Text(
-                                            text = stringResource(R.string.packet_count_description),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = stringResource(R.string.packets_format, packetCount),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            // 2. WOL PAKET SAYISI
+                            Row(
                                 modifier = Modifier
-                                    .padding(horizontal = 8.dp)
+                                    .fillMaxWidth()
                                     .clickable { showPacketCountSettingsDialog = true }
-                            )
+                                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Layers,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.wol_packet_count),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(R.string.packet_count_description),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(R.string.packets_format, packetCount),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
 
-                            ListItem(
-                                headlineContent = { Text(stringResource(R.string.status_check_interval)) },
-                                supportingContent = {
-                                    Column {
-                                        Text(
-                                            text = stringResource(R.string.status_check_interval_desc),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = if (statusCheckInterval == 0) stringResource(R.string.disabled)
-                                            else stringResource(R.string.interval_ms_format, statusCheckInterval, statusCheckInterval / 1000f),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = if (statusCheckInterval == 0) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            // 3. DURUM YOKLAMA SIKLIĞI
+                            Row(
                                 modifier = Modifier
-                                    .padding(horizontal = 8.dp)
+                                    .fillMaxWidth()
                                     .clickable { showStatusIntervalDialog = true }
-                            )
+                                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Timer,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.status_check_interval),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(R.string.status_check_interval_desc),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = if (statusCheckInterval == 0) stringResource(R.string.disabled)
+                                        else stringResource(R.string.interval_ms_format, statusCheckInterval, statusCheckInterval / 1000f),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (statusCheckInterval == 0) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
 
                             Spacer(modifier = Modifier.weight(1f))
 
+                            // 4. GRUP ÖZELLEŞTİRME
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showGroupCustomizationDialog = true }
+                                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Folder,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.group_customization),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(R.string.group_customization_desc),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            // 5. KART ÖZELLEŞTİRME
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -630,6 +731,7 @@ fun HomeScreen(
                                 }
                             }
 
+                            // 6. UYGULAMA TEMASI
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -663,6 +765,7 @@ fun HomeScreen(
                                 }
                             }
 
+                            // 7. UYGULAMA DİLİ
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -696,6 +799,7 @@ fun HomeScreen(
                                 }
                             }
 
+                            // 8. İSTATİSTİKLER
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -717,6 +821,7 @@ fun HomeScreen(
                                 }
                             }
 
+                            // 9. GELİŞMİŞ ÖZELLİKLER
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -755,8 +860,174 @@ fun HomeScreen(
                 Scaffold(
                     topBar = {
                         TopAppBar(
-                            title = { Text(stringResource(R.string.app_name)) },
+                            title = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.app_name),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    // YATAYDA SÜRÜKLENEBİLİR VE SIRALANABİLİR GRUP ÇİPLERİ
+                                    LazyRow(
+                                        modifier = Modifier.weight(1f),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        contentPadding = PaddingValues(horizontal = 4.dp)
+                                    ) {
+                                        // 1. "Tümü / All" Çipi (Sırası Sabit)
+                                        item {
+                                            val isAllSelected = selectedGroup.isEmpty()
+                                            val allLabel = if (hideGroupCounts) {
+                                                stringResource(R.string.group_all)
+                                            } else {
+                                                "${stringResource(R.string.group_all)} (${devices.size})"
+                                            }
+
+                                            FilterChip(
+                                                selected = isAllSelected,
+                                                onClick = { selectedGroup = "" },
+                                                label = {
+                                                    Text(
+                                                        text = allLabel,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Normal
+                                                    )
+                                                }
+                                            )
+                                        }
+
+                                        // 2. Özel Grup Çipleri (Basılı Tutup Yatayda Sırasını Değiştirme)
+                                        itemsIndexed(currentGroupsList, key = { _, groupName -> groupName }) { index, groupName ->
+                                            val isDragging = (draggedGroupIndex == index)
+                                            val isSelected = selectedGroup.equals(groupName, ignoreCase = true)
+                                            val count = devices.count { it.groupName.equals(groupName, ignoreCase = true) }
+                                            val groupLabel = if (hideGroupCounts) groupName else "$groupName ($count)"
+
+                                            val groupElevation by animateDpAsState(
+                                                targetValue = if (isDragging) 6.dp else 0.dp,
+                                                label = "groupElevation"
+                                            )
+                                            val groupScale by animateFloatAsState(
+                                                targetValue = if (isDragging) 1.08f else 1.0f,
+                                                label = "groupScale"
+                                            )
+
+                                            val density = LocalContext.current.resources.displayMetrics.density
+                                            val swapThresholdX = 65f * density
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .zIndex(if (isDragging) 10f else 1f)
+                                                    .graphicsLayer {
+                                                        scaleX = groupScale
+                                                        scaleY = groupScale
+                                                        translationX = if (isDragging) dragGroupAccumulatedOffset else 0f
+                                                    }
+                                                    .shadow(groupElevation, shape = CircleShape)
+                                                    .pointerInput(Unit) {
+                                                        detectDragGesturesAfterLongPress(
+                                                            onDragStart = {
+                                                                draggedGroupIndex = index
+                                                                dragGroupAccumulatedOffset = 0f
+                                                            },
+                                                            onDrag = { change, dragAmount ->
+                                                                change.consume()
+                                                                dragGroupAccumulatedOffset += dragAmount.x
+
+                                                                if (dragGroupAccumulatedOffset > swapThresholdX && index < currentGroupsList.size - 1) {
+                                                                    moveGroupItem(index, index + 1)
+                                                                    draggedGroupIndex = index + 1
+                                                                    dragGroupAccumulatedOffset -= swapThresholdX
+                                                                } else if (dragGroupAccumulatedOffset < -swapThresholdX && index > 0) {
+                                                                    moveGroupItem(index, index - 1)
+                                                                    draggedGroupIndex = index - 1
+                                                                    dragGroupAccumulatedOffset += swapThresholdX
+                                                                }
+                                                            },
+                                                            onDragEnd = {
+                                                                draggedGroupIndex = null
+                                                                dragGroupAccumulatedOffset = 0f
+                                                                viewModel.updateGroupsOrder(currentGroupsList)
+                                                            },
+                                                            onDragCancel = {
+                                                                draggedGroupIndex = null
+                                                                dragGroupAccumulatedOffset = 0f
+                                                            }
+                                                        )
+                                                    }
+                                            ) {
+                                                FilterChip(
+                                                    selected = isSelected,
+                                                    onClick = { selectedGroup = groupName },
+                                                    label = {
+                                                        Text(
+                                                            text = groupLabel,
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                        )
+                                                    },
+                                                    trailingIcon = {
+                                                        Icon(
+                                                            imageVector = Icons.Default.MoreVert,
+                                                            contentDescription = null,
+                                                            modifier = Modifier
+                                                                .size(14.dp)
+                                                                .clickable { groupToManage = groupName }
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                        }
+
+                                        // 3. Yeni Grup Ekle Butonu (+)
+                                        item {
+                                            IconButton(
+                                                onClick = { showAddGroupDialog = true },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Add,
+                                                    contentDescription = stringResource(R.string.add_group),
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            },
                             actions = {
+                                if (showBatchWakeButton) {
+                                    IconButton(
+                                        onClick = {
+                                            val targetDevices = if (selectedGroup.isBlank()) {
+                                                devices
+                                            } else {
+                                                devices.filter { it.groupName.equals(selectedGroup, ignoreCase = true) }
+                                            }
+
+                                            if (targetDevices.isEmpty()) {
+                                                Toast.makeText(context, context.getString(R.string.no_devices_in_group), Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                showWakeAllConfirmDialog = true
+                                            }
+                                        }
+                                    ) {
+                                        // Şimşek yerine uygulamanın kendi güç/foreground logosu:
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                            contentDescription = stringResource(R.string.wake_all_in_group),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                     Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
                                 }
@@ -958,6 +1229,7 @@ fun HomeScreen(
                                                         viewModel.refreshDeviceStatus(context, device)
                                                     }
                                                 },
+                                                onChangeGroupRequest = { deviceToChangeGroup = device },
                                                 onEditRequest = { deviceToEdit = device },
                                                 onScheduleRequest = { deviceToSchedule = device },
                                                 onDeleteRequest = { deviceToDelete = device }
@@ -973,9 +1245,11 @@ fun HomeScreen(
                         AddOrEditDeviceDialog(
                             deviceToEdit = null,
                             useShizuku = isShizukuEnabled,
+                            existingGroups = allGroups,
+                            defaultGroup = selectedGroup,
                             onDismiss = { showAddDialog = false },
-                            onConfirm = { name, mac, ip, localIp, port, secureOn ->
-                                viewModel.addDevice(name, mac, ip, localIp, port, secureOn)
+                            onConfirm = { name, mac, ip, localIp, port, secureOn, group ->
+                                viewModel.addDevice(name, mac, ip, localIp, port, secureOn, group)
                                 showAddDialog = false
                             }
                         )
@@ -985,18 +1259,328 @@ fun HomeScreen(
                         AddOrEditDeviceDialog(
                             deviceToEdit = device,
                             useShizuku = isShizukuEnabled,
+                            existingGroups = allGroups,
+                            defaultGroup = device.groupName,
                             onDismiss = { deviceToEdit = null },
-                            onConfirm = { name, mac, ip, localIp, port, secureOn ->
+                            onConfirm = { name, mac, ip, localIp, port, secureOn, group ->
                                 val updatedDevice = device.copy(
                                     name = name,
                                     macAddress = mac,
                                     ipAddress = ip,
                                     localIp = localIp,
                                     port = port,
-                                    secureOnPassword = secureOn?.ifBlank { null }
+                                    secureOnPassword = secureOn?.ifBlank { null },
+                                    groupName = group
                                 )
                                 viewModel.updateDevice(updatedDevice)
                                 deviceToEdit = null
+                            }
+                        )
+                    }
+
+                    // Grup Özelleştirme Diyaloğu (Sayıları Gizleme & Toplu Uyandırma Butonu)
+                    if (showGroupCustomizationDialog) {
+                        GroupCustomizationDialog(
+                            hideGroupCounts = hideGroupCounts,
+                            showBatchWakeButton = showBatchWakeButton,
+                            onDismiss = { showGroupCustomizationDialog = false },
+                            onToggleHideCounts = { hide ->
+                                viewModel.updateHideGroupCounts(hide)
+                            },
+                            onToggleShowBatchWakeButton = { show ->
+                                viewModel.updateShowBatchWakeButton(show)
+                            }
+                        )
+                    }
+
+                    // Toplu Uyandırma Onay Diyaloğu
+                    if (showWakeAllConfirmDialog) {
+                        val targetDevices = remember(devices, selectedGroup) {
+                            if (selectedGroup.isBlank()) {
+                                devices
+                            } else {
+                                devices.filter { it.groupName.equals(selectedGroup, ignoreCase = true) }
+                            }
+                        }
+                        val groupDisplayName = if (selectedGroup.isBlank()) stringResource(R.string.group_all) else selectedGroup
+
+                        AlertDialog(
+                            onDismissRequest = { showWakeAllConfirmDialog = false },
+                            title = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.wake_all_confirm_title))
+                                }
+                            },
+                            text = {
+                                Text(stringResource(R.string.wake_all_confirm_desc, targetDevices.size, groupDisplayName))
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showWakeAllConfirmDialog = false
+                                        viewModel.wakeAllDevices(targetDevices) { successCount, _ ->
+                                            val msg = if (successCount > 0) {
+                                                context.getString(R.string.wake_all_success, successCount)
+                                            } else {
+                                                context.getString(R.string.packet_sent_error, "Hata")
+                                            }
+                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                            viewModel.checkAllDevicesStatus(context, targetDevices)
+                                        }
+                                    }
+                                ) {
+                                    Text(stringResource(R.string.yes))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showWakeAllConfirmDialog = false }) {
+                                    Text(stringResource(R.string.no))
+                                }
+                            }
+                        )
+                    }
+
+                    // Grup Ekleme Diyaloğu
+                    if (showAddGroupDialog) {
+                        var newGroupName by remember { mutableStateOf("") }
+                        AlertDialog(
+                            onDismissRequest = { showAddGroupDialog = false },
+                            title = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.add_group))
+                                }
+                            },
+                            text = {
+                                OutlinedTextField(
+                                    value = newGroupName,
+                                    onValueChange = { newGroupName = it },
+                                    label = { Text(stringResource(R.string.group_name)) },
+                                    placeholder = { Text("Ev, Ofis, Sunucular...") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        val trimmed = newGroupName.trim()
+                                        if (trimmed.isNotBlank()) {
+                                            viewModel.addGroup(trimmed)
+                                            selectedGroup = trimmed
+                                            Toast.makeText(context, context.getString(R.string.group_created, trimmed), Toast.LENGTH_SHORT).show()
+                                        }
+                                        showAddGroupDialog = false
+                                    }
+                                ) {
+                                    Text(stringResource(R.string.add))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showAddGroupDialog = false }) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                            }
+                        )
+                    }
+
+                    // Grup Yönetimi (Yeniden Adlandır / Sil)
+                    groupToManage?.let { groupName ->
+                        var showRenameDialog by remember { mutableStateOf(false) }
+                        var showDeleteDialog by remember { mutableStateOf(false) }
+
+                        AlertDialog(
+                            onDismissRequest = { groupToManage = null },
+                            title = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(groupName)
+                                }
+                            },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    ListItem(
+                                        headlineContent = { Text(stringResource(R.string.rename_group)) },
+                                        leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                        modifier = Modifier.clickable { showRenameDialog = true }
+                                    )
+                                    ListItem(
+                                        headlineContent = { Text(stringResource(R.string.delete_group), color = MaterialTheme.colorScheme.error) },
+                                        leadingContent = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                        modifier = Modifier.clickable { showDeleteDialog = true }
+                                    )
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { groupToManage = null }) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                            }
+                        )
+
+                        if (showRenameDialog) {
+                            var renameInput by remember { mutableStateOf(groupName) }
+                            AlertDialog(
+                                onDismissRequest = {
+                                    showRenameDialog = false
+                                    groupToManage = null
+                                },
+                                title = { Text(stringResource(R.string.rename_group)) },
+                                text = {
+                                    OutlinedTextField(
+                                        value = renameInput,
+                                        onValueChange = { renameInput = it },
+                                        label = { Text(stringResource(R.string.group_name)) },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            val trimmed = renameInput.trim()
+                                            if (trimmed.isNotBlank() && trimmed != groupName) {
+                                                viewModel.renameGroup(groupName, trimmed)
+                                                if (selectedGroup == groupName) {
+                                                    selectedGroup = trimmed
+                                                }
+                                                Toast.makeText(context, context.getString(R.string.group_renamed, trimmed), Toast.LENGTH_SHORT).show()
+                                            }
+                                            showRenameDialog = false
+                                            groupToManage = null
+                                        }
+                                    ) {
+                                        Text(stringResource(R.string.save))
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = {
+                                        showRenameDialog = false
+                                        groupToManage = null
+                                    }) {
+                                        Text(stringResource(R.string.cancel))
+                                    }
+                                }
+                            )
+                        }
+
+                        if (showDeleteDialog) {
+                            AlertDialog(
+                                onDismissRequest = {
+                                    showDeleteDialog = false
+                                    groupToManage = null
+                                },
+                                title = { Text(stringResource(R.string.delete_group)) },
+                                text = { Text(stringResource(R.string.delete_group_confirm, groupName)) },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            viewModel.deleteGroup(groupName)
+                                            if (selectedGroup == groupName) {
+                                                selectedGroup = ""
+                                            }
+                                            Toast.makeText(context, context.getString(R.string.group_deleted, groupName), Toast.LENGTH_SHORT).show()
+                                            showDeleteDialog = false
+                                            groupToManage = null
+                                        }
+                                    ) {
+                                        Text(stringResource(R.string.yes), color = MaterialTheme.colorScheme.error)
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = {
+                                        showDeleteDialog = false
+                                        groupToManage = null
+                                    }) {
+                                        Text(stringResource(R.string.no))
+                                    }
+                                }
+                            )
+                        }
+                    }
+
+                    // Cihaz Grubu Değiştirme Diyaloğu
+                    deviceToChangeGroup?.let { device ->
+                        var selectedGroupName by remember { mutableStateOf(device.groupName) }
+
+                        AlertDialog(
+                            onDismissRequest = { deviceToChangeGroup = null },
+                            title = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.change_group))
+                                }
+                            },
+                            text = {
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = device.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.select_or_create_group),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    OutlinedTextField(
+                                        value = selectedGroupName,
+                                        onValueChange = { selectedGroupName = it },
+                                        label = { Text(stringResource(R.string.group_name_optional)) },
+                                        placeholder = { Text(stringResource(R.string.no_group)) },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        FilterChip(
+                                            selected = selectedGroupName.isEmpty(),
+                                            onClick = { selectedGroupName = "" },
+                                            label = { Text(stringResource(R.string.no_group), style = MaterialTheme.typography.labelSmall) }
+                                        )
+                                        allGroups.forEach { grp ->
+                                            val isSel = selectedGroupName.equals(grp, ignoreCase = true)
+                                            FilterChip(
+                                                selected = isSel,
+                                                onClick = { selectedGroupName = grp },
+                                                label = { Text(grp, style = MaterialTheme.typography.labelSmall) }
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        viewModel.updateDeviceGroup(device.id, selectedGroupName.trim())
+                                        deviceToChangeGroup = null
+                                    }
+                                ) {
+                                    Text(stringResource(R.string.save))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { deviceToChangeGroup = null }) {
+                                    Text(stringResource(R.string.cancel))
+                                }
                             }
                         )
                     }
@@ -1102,6 +1686,96 @@ fun HomeScreen(
             }
         }
     }
+}
+
+@Composable
+fun GroupCustomizationDialog(
+    hideGroupCounts: Boolean,
+    showBatchWakeButton: Boolean,
+    onDismiss: () -> Unit,
+    onToggleHideCounts: (Boolean) -> Unit,
+    onToggleShowBatchWakeButton: (Boolean) -> Unit
+) {
+    var hideCountsState by remember { mutableStateOf(hideGroupCounts) }
+    var showBatchWakeState by remember { mutableStateOf(showBatchWakeButton) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.group_customization), style = MaterialTheme.typography.titleLarge)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.hide_group_counts),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(R.string.hide_group_counts_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = hideCountsState,
+                        onCheckedChange = {
+                            hideCountsState = it
+                            onToggleHideCounts(it)
+                        }
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.show_batch_wake_button),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(R.string.show_batch_wake_button_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = showBatchWakeState,
+                        onCheckedChange = {
+                            showBatchWakeState = it
+                            onToggleShowBatchWakeButton(it)
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.ok))
+            }
+        }
+    )
 }
 
 @Composable
@@ -1281,6 +1955,7 @@ fun DeviceItemCard(
     portDisplay: String,
     onRefreshStatus: () -> Unit,
     onSendWol: () -> Unit,
+    onChangeGroupRequest: () -> Unit,
     onEditRequest: () -> Unit,
     onScheduleRequest: () -> Unit,
     onDeleteRequest: () -> Unit
@@ -1323,6 +1998,33 @@ fun DeviceItemCard(
                         text = device.name,
                         style = MaterialTheme.typography.titleMedium
                     )
+
+                    if (device.groupName.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Folder,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = device.groupName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+
                     if (showStatusBadge) {
                         Spacer(modifier = Modifier.height(2.dp))
                         DeviceStatusBadge(
@@ -1345,6 +2047,14 @@ fun DeviceItemCard(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.change_group)) },
+                            onClick = {
+                                showMenu = false
+                                onChangeGroupRequest()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) }
+                        )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.schedules)) },
                             onClick = {
@@ -2103,6 +2813,10 @@ fun AdvancedFeaturesScreen(
 
     // BİRLEŞİK HIZLI AYARLAR YÖNETİM DİYALOĞU
     if (showTileManagementDialog) {
+        var isTileLockEnabledInDialog by remember {
+            mutableStateOf(prefs.getBoolean("lock_tile_enabled", false))
+        }
+
         AlertDialog(
             onDismissRequest = { showTileManagementDialog = false },
             title = {
@@ -2151,6 +2865,39 @@ fun AdvancedFeaturesScreen(
                                 }
                             }
                         }
+                    }
+
+                    HorizontalDivider()
+
+                    // Hızlı Ayar Butonunu Kilitleme Anahtarı (PIN Menüsü ile Tam Senkronize)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.lock_tile), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                text = stringResource(R.string.lock_tile_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (!isAppLockActive) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(R.string.lock_tile_app_lock_hint),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = isTileLockEnabledInDialog,
+                            onCheckedChange = { newValue ->
+                                isTileLockEnabledInDialog = newValue
+                                prefs.edit().putBoolean("lock_tile_enabled", newValue).apply()
+                            }
+                        )
                     }
 
                     HorizontalDivider()
@@ -2403,6 +3150,7 @@ fun BackupAndRestoreDialog(
                             value = pinInput,
                             onValueChange = { if (it.length <= selectedPinLength && it.all { c -> c.isDigit() }) pinInput = it },
                             label = { Text(stringResource(R.string.set_pin)) },
+                            placeholder = { Text("•".repeat(selectedPinLength)) },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -2413,6 +3161,7 @@ fun BackupAndRestoreDialog(
                             value = pinConfirm,
                             onValueChange = { if (it.length <= selectedPinLength && it.all { c -> c.isDigit() }) pinConfirm = it },
                             label = { Text(stringResource(R.string.confirm_pin)) },
+                            placeholder = { Text("•".repeat(selectedPinLength)) },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -4589,6 +5338,9 @@ fun StatisticsDialog(
     totalPacketsSent: Int,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    val (appVersionInfo, recommendationText) = remember { getAppVersionAndRecommendation(context) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.statistics)) },
@@ -4624,6 +5376,31 @@ fun StatisticsDialog(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.app_version),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = appVersionInfo,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (recommendationText.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = recommendationText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -4634,13 +5411,102 @@ fun StatisticsDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+fun getAppVersionAndRecommendation(context: Context): Pair<String, String> {
+    val versionName = try {
+        val pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }
+        pInfo.versionName ?: "2.1.0"
+    } catch (_: Exception) {
+        "2.1.0"
+    }
+
+    val rawArch = detectApkArchitecture(context)
+    val formattedArch = when (rawArch) {
+        "arm64-v8a" -> "ARM64 v8A"
+        "armeabi-v7a" -> "ARMeabi v7A"
+        "x86_64" -> "x86_64"
+        "x86" -> "x86"
+        "universal" -> context.getString(R.string.universal_arch)
+        else -> rawArch
+    }
+
+    // Cihazın BİRİNCİL (ana donanım) mimarisi ARM64 mü?
+    val primaryAbi = if (Build.SUPPORTED_ABIS.isNotEmpty()) Build.SUPPORTED_ABIS[0].lowercase() else ""
+    val isNativeArm64Device = primaryAbi.contains("arm64")
+    val isNotArm64Build = rawArch != "arm64-v8a"
+
+    val recommendation = if (isNativeArm64Device && isNotArm64Build) {
+        context.getString(R.string.arm64_recommended)
+    } else {
+        ""
+    }
+
+    return Pair("v$versionName - $formattedArch", recommendation)
+}
+
+private fun detectApkArchitecture(context: Context): String {
+    try {
+        val apkFile = ZipFile(context.applicationInfo.sourceDir)
+        val abiFolders = mutableSetOf<String>()
+        val entries = apkFile.entries()
+        while (entries.hasMoreElements()) {
+            val entry = entries.nextElement()
+            if (entry.name.startsWith("lib/")) {
+                val parts = entry.name.split("/")
+                if (parts.size >= 2 && parts[1].isNotBlank()) {
+                    abiFolders.add(parts[1].lowercase())
+                }
+            }
+        }
+        apkFile.close()
+
+        if (abiFolders.size > 1) {
+            return "universal"
+        } else if (abiFolders.size == 1) {
+            val abi = abiFolders.first()
+            if (abi.contains("arm64")) return "arm64-v8a"
+            if (abi.contains("armeabi")) return "armeabi-v7a"
+            if (abi.contains("x86_64")) return "x86_64"
+            if (abi.contains("x86")) return "x86"
+            return abi
+        }
+    } catch (_: Exception) {}
+
+    try {
+        val nativeDir = context.applicationInfo.nativeLibraryDir
+        if (!nativeDir.isNullOrBlank()) {
+            val lower = nativeDir.lowercase()
+            if (lower.contains("arm64")) return "arm64-v8a"
+            if (lower.contains("x86_64")) return "x86_64"
+            if (lower.contains("arm")) return "armeabi-v7a"
+            if (lower.contains("x86")) return "x86"
+        }
+    } catch (_: Exception) {}
+
+    if (Build.SUPPORTED_ABIS.isNotEmpty()) {
+        val primaryAbi = Build.SUPPORTED_ABIS[0].lowercase()
+        if (primaryAbi.contains("arm64")) return "arm64-v8a"
+        if (primaryAbi.contains("armeabi")) return "armeabi-v7a"
+        if (primaryAbi.contains("x86_64")) return "x86_64"
+        if (primaryAbi.contains("x86")) return "x86"
+        return primaryAbi
+    }
+
+    return "universal"
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddOrEditDeviceDialog(
     deviceToEdit: DeviceEntity?,
     useShizuku: Boolean,
+    existingGroups: List<String> = emptyList(),
+    defaultGroup: String = "",
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, String, Int, String?) -> Unit
+    onConfirm: (String, String, String, String, Int, String?, String) -> Unit
 ) {
     var name by remember { mutableStateOf(deviceToEdit?.name ?: "") }
     var mac by remember { mutableStateOf(deviceToEdit?.macAddress ?: "") }
@@ -4648,6 +5514,7 @@ fun AddOrEditDeviceDialog(
     var localIp by remember { mutableStateOf(deviceToEdit?.localIp ?: "") }
     var portText by remember { mutableStateOf(deviceToEdit?.port?.toString() ?: "9") }
     var secureOn by remember { mutableStateOf(deviceToEdit?.secureOnPassword ?: "") }
+    var groupName by remember { mutableStateOf(deviceToEdit?.groupName ?: defaultGroup) }
 
     var showScanSheet by remember { mutableStateOf(false) }
 
@@ -4692,6 +5559,35 @@ fun AddOrEditDeviceDialog(
                     label = { Text(stringResource(R.string.secureon_password)) },
                     singleLine = true
                 )
+
+                // Grup Alanı ve Hızlı Seçim Çipleri
+                OutlinedTextField(
+                    value = groupName,
+                    onValueChange = { groupName = it },
+                    label = { Text(stringResource(R.string.group_name_optional)) },
+                    placeholder = { Text("Ev, Ofis, Sunucu...") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    },
+                    singleLine = true
+                )
+
+                if (existingGroups.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        existingGroups.forEach { grp ->
+                            val isSel = groupName.equals(grp, ignoreCase = true)
+                            FilterChip(
+                                selected = isSel,
+                                onClick = { groupName = if (isSel) "" else grp },
+                                label = { Text(grp, style = MaterialTheme.typography.labelSmall) }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -4716,7 +5612,7 @@ fun AddOrEditDeviceDialog(
                         onClick = {
                             if (name.isNotBlank() && mac.isNotBlank()) {
                                 val port = portText.toIntOrNull() ?: 9
-                                onConfirm(name, mac, ip, localIp, port, secureOn.ifBlank { null })
+                                onConfirm(name, mac, ip, localIp, port, secureOn.ifBlank { null }, groupName.trim())
                             }
                         }
                     ) {
@@ -5011,16 +5907,19 @@ fun DeviceStatusBadge(
             Color(0xFF2E7D32),
             stringResource(R.string.status_online)
         )
+
         DeviceStatus.STANDBY -> Triple(
             Color(0xFFFFB300).copy(alpha = 0.15f),
             Color(0xFFE65100),
             stringResource(R.string.status_standby)
         )
+
         DeviceStatus.UNREACHABLE -> Triple(
             Color(0xFFE57373).copy(alpha = 0.15f),
             Color(0xFFC62828),
             stringResource(R.string.status_unreachable)
         )
+
         DeviceStatus.CHECKING -> Triple(
             MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
             MaterialTheme.colorScheme.primary,

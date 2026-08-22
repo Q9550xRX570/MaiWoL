@@ -20,6 +20,7 @@ import com.mai.wol.network.DeviceStatusChecker
 import com.mai.wol.network.WolManager
 import com.mai.wol.widget.DeviceIconWidgetProvider
 import com.mai.wol.widget.DeviceWidgetProvider
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -49,6 +50,24 @@ class MainViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    private val _hideGroupCounts = MutableStateFlow(sharedPreferences.getBoolean("hide_group_counts", false))
+    val hideGroupCounts: StateFlow<Boolean> = _hideGroupCounts.asStateFlow()
+
+    private val _showBatchWakeButton = MutableStateFlow(sharedPreferences.getBoolean("show_batch_wake_button", true))
+    val showBatchWakeButton: StateFlow<Boolean> = _showBatchWakeButton.asStateFlow()
+
+    private fun loadSavedGroups(): List<String> {
+        val savedStr = sharedPreferences.getString("custom_groups_ordered", null)
+        if (savedStr != null) {
+            return savedStr.split("|").map { it.trim() }.filter { it.isNotBlank() }
+        }
+        val set = sharedPreferences.getStringSet("custom_groups", emptySet()) ?: emptySet()
+        return set.toList().sorted()
+    }
+
+    private val _customGroups = MutableStateFlow(loadSavedGroups())
+    val customGroups: StateFlow<List<String>> = _customGroups.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -92,6 +111,84 @@ class MainViewModel(
     private val _deviceStatuses = MutableStateFlow<Map<Long, DeviceStatus>>(emptyMap())
     val deviceStatuses: StateFlow<Map<Long, DeviceStatus>> = _deviceStatuses.asStateFlow()
 
+    fun updateHideGroupCounts(hide: Boolean) {
+        _hideGroupCounts.value = hide
+        sharedPreferences.edit().putBoolean("hide_group_counts", hide).apply()
+    }
+
+    fun updateShowBatchWakeButton(show: Boolean) {
+        _showBatchWakeButton.value = show
+        sharedPreferences.edit().putBoolean("show_batch_wake_button", show).apply()
+    }
+
+    fun updateGroupsOrder(newOrder: List<String>) {
+        val cleanList = newOrder.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        _customGroups.value = cleanList
+        sharedPreferences.edit()
+            .putString("custom_groups_ordered", cleanList.joinToString("|"))
+            .putStringSet("custom_groups", cleanList.toSet())
+            .apply()
+    }
+
+    fun addGroup(groupName: String) {
+        val trimmed = groupName.trim()
+        if (trimmed.isBlank()) return
+        val current = _customGroups.value.toMutableList()
+        if (!current.contains(trimmed)) {
+            current.add(trimmed)
+            updateGroupsOrder(current)
+        }
+    }
+
+    fun renameGroup(oldName: String, newName: String) {
+        viewModelScope.launch {
+            val trimmedOld = oldName.trim()
+            val trimmedNew = newName.trim()
+            if (trimmedOld.isBlank() || trimmedNew.isBlank() || trimmedOld == trimmedNew) return@launch
+
+            val current = _customGroups.value.toMutableList()
+            val idx = current.indexOf(trimmedOld)
+            if (idx != -1) {
+                current[idx] = trimmedNew
+            } else {
+                current.add(trimmedNew)
+            }
+            updateGroupsOrder(current.distinct())
+
+            val currentDevices = deviceDao.getAllDevices().firstOrNull() ?: emptyList()
+            currentDevices.filter { it.groupName.equals(trimmedOld, ignoreCase = true) }.forEach { dev ->
+                deviceDao.updateDevice(dev.copy(groupName = trimmedNew))
+            }
+        }
+    }
+
+    fun deleteGroup(groupName: String) {
+        viewModelScope.launch {
+            val trimmed = groupName.trim()
+            if (trimmed.isBlank()) return@launch
+
+            val current = _customGroups.value.toMutableList()
+            current.remove(trimmed)
+            updateGroupsOrder(current)
+
+            val currentDevices = deviceDao.getAllDevices().firstOrNull() ?: emptyList()
+            currentDevices.filter { it.groupName.equals(trimmed, ignoreCase = true) }.forEach { dev ->
+                deviceDao.updateDevice(dev.copy(groupName = ""))
+            }
+        }
+    }
+
+    fun updateDeviceGroup(deviceId: Long, newGroupName: String) {
+        viewModelScope.launch {
+            val dev = deviceDao.getDeviceById(deviceId) ?: return@launch
+            val trimmed = newGroupName.trim()
+            deviceDao.updateDevice(dev.copy(groupName = trimmed))
+            if (trimmed.isNotBlank()) {
+                addGroup(trimmed)
+            }
+        }
+    }
+
     fun updateTileDeviceId(deviceId: Long) {
         _tileDeviceId.value = deviceId
         sharedPreferences.edit().putLong("tile_device_id", deviceId).apply()
@@ -129,17 +226,30 @@ class MainViewModel(
         sharedPreferences.edit().putBoolean("use_shizuku", enabled).apply()
     }
 
-    fun addDevice(name: String, macAddress: String, ipAddress: String, localIp: String, port: Int, secureOn: String?) {
+    fun addDevice(
+        name: String,
+        macAddress: String,
+        ipAddress: String,
+        localIp: String,
+        port: Int,
+        secureOn: String?,
+        groupName: String = ""
+    ) {
         viewModelScope.launch {
+            val trimmedGroup = groupName.trim()
             val entity = DeviceEntity(
                 name = name,
                 macAddress = macAddress,
                 ipAddress = ipAddress.trim(),
                 localIp = localIp.trim(),
                 port = if (port <= 0) 9 else port,
-                secureOnPassword = secureOn?.takeIf { it.isNotBlank() }
+                secureOnPassword = secureOn?.takeIf { it.isNotBlank() },
+                groupName = trimmedGroup
             )
             deviceDao.insertDevice(entity)
+            if (trimmedGroup.isNotBlank()) {
+                addGroup(trimmedGroup)
+            }
             DeviceWidgetProvider.updateAllWidgets(appContext)
             DeviceIconWidgetProvider.updateAllWidgets(appContext)
             WolTileService.requestUpdate(appContext)
@@ -149,6 +259,9 @@ class MainViewModel(
     fun updateDevice(device: DeviceEntity) {
         viewModelScope.launch {
             deviceDao.updateDevice(device)
+            if (device.groupName.isNotBlank()) {
+                addGroup(device.groupName)
+            }
             DeviceWidgetProvider.updateAllWidgets(appContext)
             DeviceIconWidgetProvider.updateAllWidgets(appContext)
             WolTileService.requestUpdate(appContext)
@@ -246,6 +359,45 @@ class MainViewModel(
         }
     }
 
+    fun wakeAllDevices(deviceList: List<DeviceEntity>, onComplete: (Int, Int) -> Unit) {
+        viewModelScope.launch {
+            val currentPacketCount = _packetCount.value
+            var successCount = 0
+            var failCount = 0
+
+            deviceList.forEachIndexed { index, device ->
+                val result = WolManager.sendMagicPacket(
+                    macAddress = device.macAddress,
+                    ipAddress = device.ipAddress,
+                    localIp = device.localIp,
+                    port = device.port,
+                    secureOnPassword = device.secureOnPassword,
+                    packetCount = currentPacketCount
+                )
+                result.fold(
+                    onSuccess = { successCount++ },
+                    onFailure = { failCount++ }
+                )
+                if (index < deviceList.size - 1) {
+                    delay(80) // Ağda paket düşmesini önleyen kademeli gecikme
+                }
+            }
+
+            if (successCount > 0) {
+                val newWakeUps = _totalWakeUps.value + successCount
+                val newPackets = _totalPacketsSent.value + (successCount * currentPacketCount)
+                _totalWakeUps.value = newWakeUps
+                _totalPacketsSent.value = newPackets
+                sharedPreferences.edit()
+                    .putInt("total_wake_ups", newWakeUps)
+                    .putInt("total_packets_sent", newPackets)
+                    .apply()
+            }
+
+            onComplete(successCount, failCount)
+        }
+    }
+
     fun exportBackup(
         context: Context,
         uri: Uri,
@@ -286,6 +438,9 @@ class MainViewModel(
                     val newId = deviceDao.insertDevice(newDev)
                     oldToNewIdMap[dev.id] = newId
                     importedCount++
+                    if (newDev.groupName.isNotBlank()) {
+                        addGroup(newDev.groupName)
+                    }
                 }
 
                 for (sch in backupData.schedules) {

@@ -12,6 +12,17 @@
     <string name="enter_interval_title">Durum Yoklama Sıklığı</string>
     <string name="enter_interval_manual">Milisaniye cinsinden sıklığı girin (1000 - 60000, 0 = Devre Dışı):</string>
     <string name="enable_status_check">Otomatik Durum Yoklamayı Etkinleştir</string>
+    <string name="group_customization">Grup Özelleştirme</string>
+    <string name="group_customization_desc">Grup sekmelerini ve görünüm seçeneklerini özelleştirin</string>
+    <string name="hide_group_counts">Grup Sayılarını Gizle</string>
+    <string name="hide_group_counts_desc">Grup başlıklarındaki cihaz sayısı rozetlerini gizler (ör. Ev (3) yerine sadece Ev görünür)</string>
+    <string name="show_batch_wake_button">Toplu Uyandırma Butonunu Göster</string>
+    <string name="show_batch_wake_button_desc">Üst barda seçili gruptaki tüm cihazları tek dokunuşla uyandıran butonu gösterir</string>
+    <string name="wake_all_in_group">Grubu Uyandır</string>
+    <string name="wake_all_confirm_title">Tüm Cihazları Uyandır</string>
+    <string name="wake_all_confirm_desc">\"%2$s\" grubundaki %1$d cihazın tümüne uyandırma paketi gönderilsin mi?</string>
+    <string name="wake_all_success">%1$d cihaza uyandırma paketleri gönderildi</string>
+    <string name="no_devices_in_group">Bu grupta cihaz bulunamadı</string>
     <string name="card_customization">Kart Özelleştirme</string>
     <string name="card_customization_desc">Kartlardaki MAC, IP ve port bilgilerini gizleyin veya sansürleyin</string>
     <string name="display_show">Göster</string>
@@ -39,6 +50,7 @@
     <string name="lock_widgets_desc">Widget\'lardan uyandırmadan önce PIN veya Biyometrik doğrula</string>
     <string name="lock_tile">Hızlı Ayar Butonunu Kilitle</string>
     <string name="lock_tile_desc">Bildirim panelindeki butona basılınca PIN veya Biyometrik doğrula</string>
+    <string name="lock_tile_app_lock_hint">Not: Hızlı ayar butonunun kilitlenmesi için Uygulama Kilidi\'nin (PIN) aktif olması gerekir.</string>
     <string name="change_pin">PIN Kodunu Değiştir</string>
     <string name="pin_active_format">PIN Kilidi Aktif (%1$d Hane)</string>
     <string name="widget_unlock_title_format">%1$s cihazını uyandır</string>
@@ -190,4 +202,25 @@
     <string name="enter_backup_pin">Yedek PIN Kodunu Girin</string>
     <string name="enter_backup_pin_desc">Bu dosya şifrelenmiştir. Yüklemek için dosyanın PIN kodunu girin:</string>
     <string name="decrypt_failed">Hatalı PIN veya bozuk dosya!</string>
+    <string name="group">Grup</string>
+    <string name="group_all">Tümü</string>
+    <string name="group_name">Grup Adı</string>
+    <string name="group_name_optional">Grup (İsteğe bağlı)</string>
+    <string name="add_group">Grup Ekle</string>
+    <string name="edit_group">Grubu Düzenle</string>
+    <string name="rename_group">Grubu Yeniden Adlandır</string>
+    <string name="delete_group">Grubu Sil</string>
+    <string name="delete_group_confirm">\"%1$s\" grubunu silmek istediğinize emin misiniz? Gruptaki cihazlar silinmeyecektir.</string>
+    <string name="change_group">Grubu Değiştir</string>
+    <string name="select_or_create_group">Bir grup seçin veya yeni grup adı yazın</string>
+    <string name="existing_groups">Mevcut Gruplar</string>
+    <string name="no_group">Grupsuz</string>
+    <string name="uncategorized">Kategorisiz</string>
+    <string name="enter_group_name">Grup adını girin</string>
+    <string name="group_created">\"%1$s\" grubu oluşturuldu</string>
+    <string name="group_renamed">Grup adı \"%1$s\" olarak değiştirildi</string>
+    <string name="group_deleted">\"%1$s\" grubu silindi</string>
+    <string name="app_version">Uygulama Sürümü</string>
+    <string name="universal_arch">Evrensel</string>
+    <string name="arm64_recommended">ARM64 v8A önerilir</string>
 </resources>

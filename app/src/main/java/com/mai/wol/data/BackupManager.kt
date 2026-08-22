@@ -49,6 +49,7 @@ object BackupManager {
             dObj.put("localIp", dev.localIp)
             dObj.put("port", dev.port)
             dObj.put("secureOnPassword", dev.secureOnPassword ?: "")
+            dObj.put("groupName", dev.groupName)
             devArray.put(dObj)
         }
         plainRoot.put("devices", devArray)
@@ -161,7 +162,8 @@ object BackupManager {
                     ipAddress = dObj.optString("ipAddress", ""),
                     localIp = dObj.optString("localIp", ""),
                     port = dObj.optInt("port", 9),
-                    secureOnPassword = dObj.optString("secureOnPassword", "").takeIf { it.isNotBlank() }
+                    secureOnPassword = dObj.optString("secureOnPassword", "").takeIf { it.isNotBlank() },
+                    groupName = dObj.optString("groupName", "")
                 )
                 devicesList.add(dev)
             }

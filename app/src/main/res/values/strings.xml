@@ -12,6 +12,17 @@
     <string name="enter_interval_title">Status Check Interval</string>
     <string name="enter_interval_manual">Enter interval in milliseconds (1000 - 60000, 0 = Disabled):</string>
     <string name="enable_status_check">Enable Automatic Status Check</string>
+    <string name="group_customization">Group Customization</string>
+    <string name="group_customization_desc">Customize group tabs and display options</string>
+    <string name="hide_group_counts">Hide Group Counts</string>
+    <string name="hide_group_counts_desc">Hide device count badge from group tabs (e.g. show Home instead of Home (3))</string>
+    <string name="show_batch_wake_button">Show Batch Wake Button</string>
+    <string name="show_batch_wake_button_desc">Show a button in the top bar to wake all devices in the selected group</string>
+    <string name="wake_all_in_group">Wake Group</string>
+    <string name="wake_all_confirm_title">Wake All Devices</string>
+    <string name="wake_all_confirm_desc">Are you sure you want to send wake requests to all %1$d device(s) in \"%2$s\"?</string>
+    <string name="wake_all_success">Sent magic packets to %1$d device(s)</string>
+    <string name="no_devices_in_group">No devices found in this group</string>
     <string name="card_customization">Card Customization</string>
     <string name="card_customization_desc">Hide or mask MAC, IP and port details on cards</string>
     <string name="display_show">Show</string>
@@ -39,6 +50,7 @@
     <string name="lock_widgets_desc">Require PIN or Biometrics before waking from widgets</string>
     <string name="lock_tile">Lock Quick Settings Tile</string>
     <string name="lock_tile_desc">Require PIN or Biometrics when tapping notification tile</string>
+    <string name="lock_tile_app_lock_hint">Note: App Lock (PIN) must be enabled for tile lock to take effect.</string>
     <string name="change_pin">Change PIN</string>
     <string name="pin_active_format">PIN Lock is Active (%1$d Digits)</string>
     <string name="widget_unlock_title_format">Wake up %1$s</string>
@@ -190,4 +202,25 @@
     <string name="enter_backup_pin">Enter Backup PIN</string>
     <string name="enter_backup_pin_desc">This file is encrypted. Enter its PIN to unlock:</string>
     <string name="decrypt_failed">Incorrect PIN or corrupted file!</string>
+    <string name="group">Group</string>
+    <string name="group_all">All</string>
+    <string name="group_name">Group Name</string>
+    <string name="group_name_optional">Group (Optional)</string>
+    <string name="add_group">Add Group</string>
+    <string name="edit_group">Edit Group</string>
+    <string name="rename_group">Rename Group</string>
+    <string name="delete_group">Delete Group</string>
+    <string name="delete_group_confirm">Are you sure you want to delete the group \"%1$s\"? Devices in this group will not be deleted.</string>
+    <string name="change_group">Change Group</string>
+    <string name="select_or_create_group">Select or type a group name</string>
+    <string name="existing_groups">Existing Groups</string>
+    <string name="no_group">No Group</string>
+    <string name="uncategorized">Uncategorized</string>
+    <string name="enter_group_name">Enter group name</string>
+    <string name="group_created">Group \"%1$s\" created</string>
+    <string name="group_renamed">Group renamed to \"%1$s\"</string>
+    <string name="group_deleted">Group \"%1$s\" deleted</string>
+    <string name="app_version">App Version</string>
+    <string name="universal_arch">Universal</string>
+    <string name="arm64_recommended">ARM64 v8A recommended</string>
 </resources>

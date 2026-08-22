@@ -13,5 +13,6 @@ data class DeviceEntity(
     val localIp: String = "",
     val port: Int = 9,
     val secureOnPassword: String? = null,
+    val groupName: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
