@@ -1,92 +1,106 @@
 # ⚡ MaiWoL
 
-An enterprise-grade, ultra-modern, privacy-hardened, and 100% Free and Open Source (FOSS) Wake-on-LAN power management suite for Android.
+<p align="center">
+  <strong>The Ultimate Enterprise-Grade, Privacy-First, and 100% Free & Open-Source (FOSS) Wake-on-LAN Suite for Android.</strong>
+</p>
 
-[![Version](https://img.shields.io/badge/Version-v2.0.0-blue?style=flat&logo=android&logoColor=white)](https://github.com/Q9550xRX570/MaiWoL/releases)
-[![Website](https://img.shields.io/badge/Website-maiwol.com-blue?style=flat&logo=googlechrome&logoColor=white)](https://maiwol.com)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![FOSS](https://img.shields.io/badge/FOSS-100%25-success.svg)](https://f-droid.org)
-[![Platform](https://img.shields.io/badge/Platform-Android_7.0+-green.svg)](https://android.com)
-[![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F68_Clean-brightgreen.svg)](https://www.virustotal.com/gui/file/df831f1d144b17f24e5d713a34661213cfe3f9da4eed922824d3b552ca290b8f?nocache=1)
-[![Trackers](https://img.shields.io/badge/Trackers-0-brightgreen.svg)]()
-[![Ads](https://img.shields.io/badge/Ads-0-brightgreen.svg)]()
-
----
-
-## 🌟 Why MaiWoL v2.0.0?
-
-Most Wake-on-LAN applications on Android are bloated with ads, closed-source trackers, outdated XML layouts, or basic UDP-only packet dispatchers. 
-
-**MaiWoL v2.0.0** redefines Android network power management: Built from the ground up with **100% Kotlin & Jetpack Compose**, it unites **instant home screen access**, **military-grade AES-256 backup encryption**, **tri-state live status diagnostics**, **rootless Shizuku ARP discovery**, and **bank-grade biometric security** in an ultra-lightweight (~5 MB) native footprint with **zero trackers and zero telemetry**.
+<p align="center">
+  <a href="https://maiwol.com"><img src="https://img.shields.io/badge/Official_Website-maiwol.com-0284C7?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website"></a>
+  <a href="https://github.com/Q9550xRX570/MaiWoL/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/Latest_Release-v2.0.0-38BDF8?style=for-the-badge&logo=github&logoColor=white" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-2563EB?style=for-the-badge&logo=gnu&logoColor=white" alt="License"></a>
+  <a href="https://f-droid.org"><img src="https://img.shields.io/badge/F--Droid-100%25_FOSS-34D399?style=for-the-badge&logo=fdroid&logoColor=white" alt="FOSS"></a>
+  <a href="https://android.com"><img src="https://img.shields.io/badge/Platform-Android_7.0+-4ADE80?style=for-the-badge&logo=android&logoColor=white" alt="Android"></a>
+  <a href="https://www.virustotal.com"><img src="https://img.shields.io/badge/VirusTotal-0%2F68_Clean-10B981?style=for-the-badge&logo=virustotal&logoColor=white" alt="VirusTotal"></a>
+  <img src="https://img.shields.io/badge/Telemetry-0%25_Zero-EF4444?style=for-the-badge" alt="Zero Telemetry">
+</p>
 
 ---
 
-## 🚀 Key Highlights & Architectural Pillars
+## 📖 Overview
 
-### ⚡ 1. Next-Gen Widget & Quick-Access Ecosystem
-Never open the app to wake your computers again:
-- **📱 1x1 App Icon Widget:** Sits on your home screen identically to a native app icon, displaying your target PC's name and waking it with a single tap.
-- **🎴 2x1 Compact Card Widget:** Sleek horizontal card displaying device status, MAC/IP details, and an instant power button.
-- **🔥 One UI & Android Dynamic App Shortcuts:** Long-press the MaiWoL icon on your launcher (Samsung One UI, Pixel Launcher, etc.) to view registered devices, wake them instantly, or drag them out to create dedicated 1x1 desktop shortcuts.
-- **⚡ Dynamic Quick Settings Tile (Notification Shade):** Pull down your quick settings panel from anywhere in Android to wake your selected PC. Configure target devices directly inside the app; the notification tile dynamically updates its label to match your PC's name!
+**MaiWoL** is an advanced, lightweight (~1.8 MB), and non-intrusive Wake-on-LAN (WoL) management suite crafted specifically for power users, sysadmins, and privacy advocates. Developed entirely in **Kotlin** and **Jetpack Compose (Material 3)**, it combines high-performance raw packet broadcasting with an array of automation mechanisms, desktop widgets, quick settings tiles, and military-grade cryptography—all while guaranteeing **zero telemetry, zero analytics, and zero advertisements.**
 
 ---
 
-### 💾 2. Native `.maiwol` Backup & Restore Engine (AES-256 GCM)
-- **Custom `.maiwol` File Architecture:** Native file-association support. Tapping a `.maiwol` file from WhatsApp, Telegram, Google Drive, or your File Manager automatically launches MaiWoL and prompts for instant one-tap restoration.
-- **Optional Military-Grade Encryption:** Protect exported backups using irreversible **AES-256 GCM** encryption derived via PBKDF2 with custom 2, 4, 6, or 8-digit PINs. Your network topologies, IP ranges, MACs, and SecureOn passwords remain fully cryptographically protected.
-- **Plain / Encrypted Fallback:** Choose between human-readable open JSON backups or hardened encrypted payloads.
+## 🌟 Key Features & Architectural Deep-Dive
+
+### 🚀 1. Precision WoL Packet Engine
+- **Multi-Route Transmission:** Dispatches UDP Magic Packets across standard local subnet broadcast (`255.255.255.255` / Subnet Directed) or remote unicast endpoints (WAN / Static IP / DDNS).
+- **Enterprise SecureOn Injection:** Supports motherboard/NIC BIOS-level 6-byte password hex injection for hardened infrastructure.
+- **Paced Multi-Burst Dispatch:** Configurable packet repetition (1–20 bursts with 50ms interval pacing) ensuring packet delivery over noisy switches and aggressive router drop queues.
+
+### 📱 2. Interactive Home Screen Widgets *(New in v2.0)*
+- **2x1 Device Card Widget:** Displays device name, MAC address, and a dedicated tactile "Wake" trigger button directly on the Android launcher.
+- **1x1 Quick Wake Icon Widget:** Ultra-compact, single-tap launcher widget functioning like an app icon for instantaneous one-touch boot.
+- **Isolated Widget Security:** Option to enforce PIN/Biometric authentication specifically for widget interactions before Magic Packets are dispatched.
+
+### ⚡ 3. Quick Settings Tile & Launcher Shortcuts *(New in v2.0)*
+- **Notification Shade Tile (`WolTileService`):** Pull down the Android quick settings drawer and trigger your primary workstation with a single tap without ever opening the app.
+- **Dynamic App Shortcuts:** Long-press the MaiWoL launcher icon to access instant wake shortcuts for your most frequently used machines.
+
+### 📦 4. Military-Grade Encrypted Backup & Restore (`.maiwol`) *(New in v2.0)*
+- **AES-256-GCM Cryptography:** Protects sensitive network infrastructure topologies (MAC addresses, WAN endpoints, port configurations, and timers) with **PBKDF2-HMAC-SHA256** key derivation (10,000 iterations, 16-byte random salt, 12-byte IV).
+- **Dual-Mode Export:** Export as plain JSON or PIN-encrypted `.maiwol` backup packages.
+- **System File Association:** Directly tap any `.maiwol` file from Telegram, WhatsApp, or file managers to initiate an automated, verified import.
+
+### 🟢 5. Multi-Tier Intelligent Status Polling
+- **False-Positive Elimination:** Proprietary ICMP parser that filters out deceptive gateway echo replies (e.g., "Destination Host Unreachable" or 100% loss drops).
+- **Core OS Daemon Polling:** Interrogates standard OS services (**SMB `445`, RPC `135`, RDP `3389`, SSH `22`, LLMNR/WSD**) to detect running machines when ICMP echo is blocked by firewalls.
+- **Tri-State Diagnostics:** Immediate visual status indicators for **ONLINE** (OS Active), **STANDBY** (Powered off, but route verified for WoL), or **UNREACHABLE**.
+
+### 🔍 6. Rootless ARP Subnet Discovery (Shizuku Binder IPC)
+- Overcomes Android 10+ restrictions that block user-space access to `/proc/net/arp`.
+- Interfaces with the **Shizuku API** via elevated IPC binder transactions to execute privileged `ip neigh` and `sysfs` queries, discovering real physical MAC addresses across the LAN without rooting.
+
+### ⏰ 7. Resilient Background Scheduling Engine
+- **Hardware WakeAlarms:** Backed by `AlarmManager.RTC_WAKEUP` with exact alarm scheduling.
+- **WakeLock Concurrency:** Automatic `PowerManager.PARTIAL_WAKE_LOCK` acquisition preventing CPU sleep during packet construction and socket dispatch.
+- **Reboot Resilience:** Integrated `RECEIVE_BOOT_COMPLETED` broadcast receiver automatically reconstituting all Room Database scheduling queues on phone restart.
+- **Calendar & Recurring Timers:** Configure single-run calendar wake-ups or weekly recurring day schedules with interactive drag-and-drop reordering.
+
+### ⚡ 8. Headless External Automation (Tasker / MacroDroid / ADB)
+- Dedicated background intent receiver (`com.mai.wol.ACTION_WAKE_DEVICE`) capable of processing headless triggers via saved device name, ID, or raw MAC/IP/Port configurations.
+
+### 🛡️ 9. Bank-Grade Security & Privacy Protection
+- **Cryptographic PIN Storage:** Stored using irreversible **SHA-256** hash digests.
+- **Hardware-Backed Biometrics:** Native Android `BiometricPrompt` (Fingerprint & Face Recognition).
+- **Window Anti-Leak Protection:** Enforced `FLAG_SECURE` window flags preventing screen capture and masking previews in the Android Recent Apps switcher.
+- **Card Data Masking:** Granular privacy customization to Show, Mask (`*****`), or completely Hide MAC, IP, and Port parameters on screen.
+
+### 🛠️ 10. Built-in Network Diagnostics Suite
+- **DNS Resolver:** Native hostname-to-IP and reverse DNS resolution utility.
+- **Ping & Latency Tester:** Live round-trip time (RTT) and packet loss diagnostic terminal.
 
 ---
 
-### 🛡️ 3. Multi-Tier Security & Privacy Shield
-- **Cryptographic PIN & Biometrics:** Irreversible **SHA-256** hash protection supporting 2, 4, 6, or 8-digit PINs alongside hardware-backed `BiometricPrompt` (Fingerprint & Face Recognition).
-- **🔒 Dedicated Widget & Tile Lock Gating:** Optionally require PIN or biometric authentication *before* widgets, shortcuts, or notification shade tiles are allowed to transmit Magic Packets. Displays a dedicated contextual unlock prompt: *"Wake up [Device Name]"* / *"[Cihaz Adı] cihazını uyandır"*.
-- **🛡️ Anti-Leak Window Shield (`FLAG_SECURE`):** Prevents unauthorized screen recordings, screenshots, and obscures app thumbnails in the Android recent task switcher.
-- **🎭 Card Data Masking:** Dynamic visibility controls to Show, Mask (`*****`), or completely Hide sensitive MAC, IP, and Port parameters on screen.
+## 📥 Verified Standalone Downloads & Checksums (v2.0.0)
+
+Every standalone APK is built in an isolated environment, optimized via R8, and verified through VirusTotal:
+
+| Architecture | Target Device | File | SHA-256 Checksum | VirusTotal Report |
+| :--- | :--- | :--- | :--- | :--- |
+| **ARM64-v8a** | Modern 64-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.0.0/MaiWoL-v2.0.0-arm64-v8a.apk) | `569732b44ccdf59874cbe7251de7fbfa5937c033ce651ded328ee05a635469b7` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/569732b44ccdf59874cbe7251de7fbfa5937c033ce651ded328ee05a635469b7?nocache=1) |
+| **Universal** | All Android Devices | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.0.0/MaiWoL-v2.0.0-universal.apk) | `df831f1d144b17f24e5d713a34661213cfe3f9da4eed922824d3b552ca290b8f` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/df831f1d144b17f24e5d713a34661213cfe3f9da4eed922824d3b552ca290b8f?nocache=1) |
+| **ARMeabi-v7a** | Legacy 32-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.0.0/MaiWoL-v2.0.0-armeabi-v7a.apk) | `aa35cdb1dc69124df7f4a5c48ed0474904a95ab9b603202baec6afdc54edd658` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/aa35cdb1dc69124df7f4a5c48ed0474904a95ab9b603202baec6afdc54edd658?nocache=1) |
+| **x86_64** | Emulators & Android PCs | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.0.0/MaiWoL-v2.0.0-x86_64.apk) | `b7d84b3426a6d7564952cf3f47d32333e4de52f5c70502965d43cf05baf0251e` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/b7d84b3426a6d7564952cf3f47d32333e4de52f5c70502965d43cf05baf0251e?nocache=1) |
 
 ---
 
-### 🚀 4. High-Performance WoL Dispatch Engine
-- **Multi-Route Transmission:** Local Subnet Broadcast (`255.255.255.255` / Subnet Directed) or WAN / DDNS routing.
-- **Enterprise SecureOn:** Full support for BIOS/NIC-level 6-byte password hex injection.
-- **Resilient Multi-Burst Dispatch:** Configurable packet burst counter (1–20 packets with precision 50ms pacing) preventing packet drop across complex routers and managed switches.
+## 🧪 Google Play Closed Beta Program
+
+We are actively maintaining our **Google Play Closed Testing** channel. To install and test **MaiWoL** directly through the Play Store:
+
+1. **Join the Testers Group:** [Google Group for Testers](https://groups.google.com/g/maiwol-testers)
+2. **Opt-in via Web:** [Google Play Testing Opt-in](https://play.google.com/apps/testing/com.mai.wol)
+3. **Download on Play Store:** [MaiWoL on Google Play](https://play.google.com/store/apps/details?id=com.mai.wol)
+
+*For questions or support, reach us at [contact@maiwol.com](mailto:contact@maiwol.com).*
 
 ---
 
-### 🟢 5. Tri-State Intelligent Status Diagnostics
-- **False-Positive Filtering:** Raw ICMP ping parser rejecting deceptive router echo drops (host unreachable / 100% loss).
-- **Deep OS Service Polling:** Fallback TCP polling on active OS daemon ports (**SMB 445, RPC 135, RDP 3389, SSH 22, LLMNR 5357**) when ICMP ping is blocked by firewalls.
-- **Instant Tri-State Diagnostics:**
-  - 🟢 **ONLINE:** OS is active and answering requests.
-  - 🟡 **OFFLINE / STANDBY:** Device powered down, but local Wi-Fi / WAN route verified and ready for Magic Packet reception.
-  - 🔴 **UNREACHABLE:** Target unreachable or network path disconnected.
+## 📲 Headless External Automation (Tasker / MacroDroid / ADB)
 
----
-
-### 🔍 6. Rootless ARP & MAC Discovery via Shizuku
-- Overcomes Android 10+ privacy restrictions blocking `/proc/net/arp`.
-- Direct IPC interaction via **Shizuku API** executing privileged `ip neigh` and `sysfs` queries to dynamically discover true physical MAC addresses across the LAN without root permissions.
-
----
-
-### ⏰ 7. Dual Automation Engine
-- **Internal Scheduled Tasks:** Backed by `AlarmManager.RTC_WAKEUP` with exact alarm scheduling, recurring weekly calendars, and automatic `PowerManager.PARTIAL_WAKE_LOCK` acquisition preventing CPU suspension during dispatch.
-- **Reboot Resilience:** `BootReceiver` reconstructs all Room Database task queues upon device restart.
-- **External Intent Receiver (Tasker / MacroDroid / ADB):** Headless background intent receiver (`com.mai.wol.ACTION_WAKE_DEVICE`) accepting parameters by device name or MAC address without opening the GUI.
-
----
-
-### 🛠️ 8. Built-in Network Diagnostics Suite
-- **DNS Lookup Tool:** Query A/AAAA records and perform reverse DNS lookups in real-time.
-- **Ping & Latency Tester:** Live round-trip time (RTT) and packet loss diagnostic terminal with localized metrics.
-- **Local Network Auditor:** Direct physical network interface inspector displaying active IP and physical MAC addresses.
-
----
-
-## 📲 External Automation Guide (Tasker / MacroDroid / ADB)
-
-Trigger headless wake-ups from third-party automation tools using standard broadcast intents:
+Trigger background wake-ups without launching the graphical interface:
 
 - **Action:** `com.mai.wol.ACTION_WAKE_DEVICE`
 - **Package:** `com.mai.wol`
@@ -94,37 +108,38 @@ Trigger headless wake-ups from third-party automation tools using standard broad
 ### Intent Extra Parameters:
 | Extra Key | Type | Description | Example |
 | :--- | :--- | :--- | :--- |
-| `device_name` | String | Saved device name | `"Gaming PC"` |
-| `mac_address` | String | Target physical MAC address | `"AA:BB:CC:DD:EE:FF"` |
-| `ip_address` | String | Optional WAN / DDNS host | `"home.ddns.net"` |
-| `local_ip` | String | Optional Local Subnet IP | `"192.168.1.100"` |
-| `port` | Int / String | Target UDP Port (Default: 9) | `9` |
-| `packet_count` | Int / String | Packet burst count (1–20) | `5` |
+| `device_name` | String | Target saved device name | `"Workstation"` |
+| `device_id` | Long / Int / String | Target saved device ID | `1` |
+| `mac_address` | String | Direct hardware MAC address | `"AA:BB:CC:DD:EE:FF"` |
+| `ip_address` | String | Optional WAN / DDNS target | `"home.ddns.net"` |
+| `local_ip` | String | Optional Local subnet IP | `"192.168.1.100"` |
+| `port` | Int / String | Target UDP Port *(Default: 9)* | `9` |
+| `packet_count` | Int / String | Packet burst count *(1–20)* | `5` |
+| `secure_on` | String | Optional 6-byte hex SecureOn password | `"123456789ABC"` |
 
-### ADB Command Example:
+### Terminal / ADB Command Example:
 ```bash
-adb shell am broadcast -a com.mai.wol.ACTION_WAKE_DEVICE -p com.mai.wol --es device_name "Gaming PC"
-🔒 Privacy & Freedom Pledge
-0% Telemetry / Analytics: Zero Google Analytics, Firebase, Sentry, or tracking SDKs.
-0% Ads: Completely free of advertisements forever.
-Point-to-Point Networking: All socket connections are strictly point-to-point between your phone and your configured network targets.
-No Cloud Required: All database storage, PIN hashes, and .maiwol backup files remain 100% on your local device.
-📥 Downloads & VirusTotal Verifications
-Architecture	Target	SHA-256 Checksum	VirusTotal Report
-ARM64-v8a	Modern Phones	569732b44ccdf59874cbe7251de7fbfa5937c033ce651ded328ee05a635469b7	0/68 Clean
-Universal	All Devices	df831f1d144b17f24e5d713a34661213cfe3f9da4eed922824d3b552ca290b8f	0/68 Clean
-ARMeabi-v7a	32-bit Phones	aa35cdb1dc69124df7f4a5c48ed0474904a95ab9b603202baec6afdc54edd658	0/68 Clean
-x86_64	Emulators / PCs	b7d84b3426a6d7564952cf3f47d32333e4de52f5c70502965d43cf05baf0251e	0/68 Clean
-🧪 Help Test on Google Play (Closed Beta)
-We are currently running the Google Play Closed Testing phase. If you want to install and test MaiWoL directly through the Google Play Store and help us publish it publicly, we would love your support!
-👉 How to join:
-Send a quick email to gursoymustafaerdem@gmail.com with the subject MaiWoL Beta Tester (mentioning your Google Play account email), and we will immediately add you to the Google Play tester list!
-🛠️ Build from Source
+adb shell am broadcast -a com.mai.wol.ACTION_WAKE_DEVICE -p com.mai.wol --es device_name "Workstation"
+```
+🔒 Privacy & Freedom Guarantee
+0% Telemetry & Analytics: No Firebase, no Google Analytics, no third-party SDK trackers.
+0% Advertisements: Zero ad banners, native ads, or tracking cookies.
+Direct Point-to-Point Networking: All socket connections are strictly negotiated between your Android device and the target network addresses you specify.
+🛠️ Tech Stack & Build from Source
+Language: Kotlin 2.0+
+UI Framework: Jetpack Compose & Material 3
+Database: Room DB with Coroutine Flows
+Privileged IPC: Shizuku API
+Cryptography: AES-256-GCM / PBKDF2-HMAC-SHA256 / SHA-256
+Building locally:
 code
 Bash
+# Clone the repository
 git clone https://github.com/Q9550xRX570/MaiWoL.git
 cd MaiWoL
+
+# Compile optimized release binaries
 ./gradlew assembleRelease
-The optimized binaries will be generated in app/build/outputs/apk/release/.
+Compiled APK artifacts will be output to app/build/outputs/apk/release/.
 📜 License
-This project is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file for full details.
+MaiWoL is released under the GNU General Public License v3.0 (GPL-3.0). You are free to inspect, modify, and redistribute this software in accordance with the GNU GPL-3.0 terms.
