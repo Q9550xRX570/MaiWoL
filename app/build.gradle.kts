@@ -15,13 +15,12 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        versionCode = 3
-        versionName = "1.1.0"
+        versionCode = 4
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // MİMARİ BÖLME (ARM64, ARMv7, x86_64 ve Evrensel APK)
     splits {
         abi {
             isEnable = true
@@ -33,7 +32,6 @@ android {
 
     buildTypes {
         release {
-            // Sıkıştırma ve Optimizasyon Motorunu Aç
             isMinifyEnabled = true
             isShrinkResources = true
 

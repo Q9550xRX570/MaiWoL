@@ -2,11 +2,16 @@ package com.mai.wol
 
 import android.app.Activity
 import android.app.DatePickerDialog
+import android.app.StatusBarManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Icon
 import android.hardware.biometrics.BiometricPrompt
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
@@ -14,8 +19,10 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -55,8 +62,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -77,7 +82,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.mai.wol.automation.AlarmScheduler
+import com.mai.wol.automation.WolTileService
 import com.mai.wol.data.AppDatabase
+import com.mai.wol.data.BackupData
+import com.mai.wol.data.BackupManager
 import com.mai.wol.data.DeviceEntity
 import com.mai.wol.data.ScheduleEntity
 import com.mai.wol.network.DeviceStatus
@@ -100,8 +108,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
-import android.content.Intent
-import android.net.Uri
 
 class MainActivity : ComponentActivity() {
 
@@ -110,11 +116,13 @@ class MainActivity : ComponentActivity() {
     }
 
     val isAppUnlocked = mutableStateOf(true)
+    private var pendingImportData = mutableStateOf<BackupData?>(null)
+    private var pendingEncryptedRawJson = mutableStateOf<String?>(null)
 
     private val viewModel: MainViewModel by viewModels {
         val db = AppDatabase.getDatabase(applicationContext)
         val prefs = applicationContext.getSharedPreferences("wol_settings", Context.MODE_PRIVATE)
-        MainViewModelFactory(db.deviceDao(), db.scheduleDao(), prefs)
+        MainViewModelFactory(db.deviceDao(), db.scheduleDao(), prefs, applicationContext)
     }
 
     private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
@@ -163,6 +171,8 @@ class MainActivity : ComponentActivity() {
         }
         applyWindowTheme(isDark)
 
+        handleIncomingIntent(intent)
+
         enableEdgeToEdge()
         setContent {
             var currentThemeSetting by remember { mutableStateOf(prefs.getString("app_theme", "system") ?: "system") }
@@ -179,6 +189,8 @@ class MainActivity : ComponentActivity() {
             }
 
             val unlocked by isAppUnlocked
+            val incomingBackup by pendingImportData
+            val encryptedJson by pendingEncryptedRawJson
 
             MaiWoLTheme(darkTheme = isDarkTheme) {
                 if (!unlocked) {
@@ -195,6 +207,118 @@ class MainActivity : ComponentActivity() {
                             currentThemeSetting = newTheme
                         }
                     )
+
+                    encryptedJson?.let { rawJson ->
+                        var pinInput by remember { mutableStateOf("") }
+                        var isPinError by remember { mutableStateOf(false) }
+
+                        AlertDialog(
+                            onDismissRequest = { pendingEncryptedRawJson.value = null },
+                            title = { Text(stringResource(R.string.enter_backup_pin)) },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(stringResource(R.string.enter_backup_pin_desc), style = MaterialTheme.typography.bodyMedium)
+                                    OutlinedTextField(
+                                        value = pinInput,
+                                        onValueChange = {
+                                            if (it.length <= 8 && it.all { c -> c.isDigit() }) {
+                                                pinInput = it
+                                                isPinError = false
+                                            }
+                                        },
+                                        label = { Text("PIN") },
+                                        singleLine = true,
+                                        visualTransformation = PasswordVisualTransformation(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                        isError = isPinError,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    if (isPinError) {
+                                        Text(stringResource(R.string.decrypt_failed), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        val decrypted = BackupManager.decryptBackupJson(rawJson, pinInput)
+                                        if (decrypted != null && decrypted.devices.isNotEmpty()) {
+                                            pendingEncryptedRawJson.value = null
+                                            pendingImportData.value = decrypted
+                                        } else {
+                                            isPinError = true
+                                        }
+                                    }
+                                ) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { pendingEncryptedRawJson.value = null }) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                            }
+                        )
+                    }
+
+                    incomingBackup?.let { backup ->
+                        AlertDialog(
+                            onDismissRequest = { pendingImportData.value = null },
+                            title = { Text(stringResource(R.string.import_confirm_title)) },
+                            text = {
+                                Text(stringResource(R.string.import_confirm_desc, backup.devices.size, backup.schedules.size))
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        viewModel.importBackup(
+                                            context = this@MainActivity,
+                                            backupData = backup,
+                                            onSuccess = { count ->
+                                                Toast.makeText(this@MainActivity, getString(R.string.import_success, count), Toast.LENGTH_SHORT).show()
+                                                pendingImportData.value = null
+                                            },
+                                            onError = { err ->
+                                                Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
+                                                pendingImportData.value = null
+                                            }
+                                        )
+                                    }
+                                ) {
+                                    Text(stringResource(R.string.yes))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { pendingImportData.value = null }) {
+                                    Text(stringResource(R.string.no))
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (intent.action == Intent.ACTION_VIEW) {
+            val rawJson = BackupManager.readStringFromUri(this, uri)
+            if (rawJson != null) {
+                if (BackupManager.isFileEncrypted(rawJson)) {
+                    pendingEncryptedRawJson.value = rawJson
+                } else {
+                    val backup = BackupManager.parseBackupJson(rawJson)
+                    if (backup != null && backup.devices.isNotEmpty()) {
+                        pendingImportData.value = backup
+                    } else {
+                        Toast.makeText(this, getString(R.string.invalid_backup_file), Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -365,7 +489,6 @@ fun HomeScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // SADECE PROJEDE VAR OLAN 3 DİL SEÇENEĞİ
     val currentLangText = when (appLanguage) {
         "tr" -> stringResource(R.string.turkish)
         "en" -> stringResource(R.string.english)
@@ -395,7 +518,6 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.titleLarge
                             )
 
-                            // 0. RESMİ WEB SİTESİ (maiwol.com)
                             ListItem(
                                 headlineContent = { Text(stringResource(R.string.website)) },
                                 supportingContent = {
@@ -432,7 +554,6 @@ fun HomeScreen(
                                     }
                             )
 
-                            // 1. SIHIRLI PAKET SAYISI
                             ListItem(
                                 headlineContent = { Text(stringResource(R.string.wol_packet_count)) },
                                 supportingContent = {
@@ -456,7 +577,6 @@ fun HomeScreen(
                                     .clickable { showPacketCountSettingsDialog = true }
                             )
 
-                            // 2. DURUM YOKLAMA SIKLIĞI
                             ListItem(
                                 headlineContent = { Text(stringResource(R.string.status_check_interval)) },
                                 supportingContent = {
@@ -483,7 +603,6 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.weight(1f))
 
-                            // KART ÖZELLEŞTİRME
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -511,7 +630,6 @@ fun HomeScreen(
                                 }
                             }
 
-                            // UYGULAMA TEMASI
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -520,7 +638,7 @@ fun HomeScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = PaletteIcon,
+                                    imageVector = Icons.Default.Palette,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -545,7 +663,6 @@ fun HomeScreen(
                                 }
                             }
 
-                            // UYGULAMA DİLİ
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -554,7 +671,7 @@ fun HomeScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = LanguageIcon,
+                                    imageVector = Icons.Default.Language,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -579,7 +696,6 @@ fun HomeScreen(
                                 }
                             }
 
-                            // İSTATİSTİKLER
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -601,7 +717,6 @@ fun HomeScreen(
                                 }
                             }
 
-                            // GELİŞMİŞ ÖZELLİKLER
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -613,7 +728,7 @@ fun HomeScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = DnsIcon,
+                                    imageVector = Icons.Default.Dns,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -941,7 +1056,6 @@ fun HomeScreen(
                         )
                     }
 
-                    // SADECE SİSTEM VARSAYILANI, TÜRKÇE VE İNGİLİZCE DİYALOĞU
                     if (showLanguageDialog) {
                         LanguageSelectionDialog(
                             currentLangTag = appLanguage,
@@ -990,7 +1104,6 @@ fun HomeScreen(
     }
 }
 
-// SADE VE TERTEMİZ DİL SEÇİMİ (Sadece var olan 3 seçenek)
 @Composable
 fun LanguageSelectionDialog(
     currentLangTag: String,
@@ -1195,7 +1308,7 @@ fun DeviceItemCard(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = ComputerIcon,
+                            imageVector = Icons.Default.Computer,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(22.dp)
@@ -1630,17 +1743,30 @@ fun AdvancedFeaturesScreen(
     onSetShizukuEnabled: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
+    val devices by viewModel.devices.collectAsState()
+    val tileDeviceId by viewModel.tileDeviceId.collectAsState()
+
     var showDnsDialog by remember { mutableStateOf(false) }
     var showPingDialog by remember { mutableStateOf(false) }
     var showInternalAutomationDialog by remember { mutableStateOf(false) }
     var showAutomationGuideDialog by remember { mutableStateOf(false) }
     var showShizukuDialog by remember { mutableStateOf(false) }
     var showAppLockDialog by remember { mutableStateOf(false) }
+    var showBackupDialog by remember { mutableStateOf(false) }
+    var showTileManagementDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("wol_settings", Context.MODE_PRIVATE) }
     var isAppLockActive by remember { mutableStateOf(prefs.getBoolean("app_lock_enabled", false)) }
     val pinLength = remember(isAppLockActive) { prefs.getInt("security_pin_length", 4) }
+
+    val currentTileDeviceName = remember(devices, tileDeviceId) {
+        if (tileDeviceId != -1L) {
+            devices.firstOrNull { it.id == tileDeviceId }?.name ?: devices.firstOrNull()?.name ?: ""
+        } else {
+            devices.firstOrNull()?.name ?: ""
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -1664,6 +1790,85 @@ fun AdvancedFeaturesScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // 1. YEDEKLEME VE GERİ YÜKLEME (.maiwol)
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showBackupDialog = true },
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Backup,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.backup_and_restore),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(R.string.backup_restore_desc),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 2. TEK VE BİRLEŞİK HIZLI AYARLAR KARTI
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showTileManagementDialog = true },
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FlashOn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.quick_settings_tile),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(R.string.quick_settings_tile_desc),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (currentTileDeviceName.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Hedef: $currentTileDeviceName",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. DNS SORGU ARACI
             item {
                 Card(
                     modifier = Modifier
@@ -1676,7 +1881,7 @@ fun AdvancedFeaturesScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = DnsIcon,
+                            imageVector = Icons.Default.Dns,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(28.dp)
@@ -1698,6 +1903,7 @@ fun AdvancedFeaturesScreen(
                 }
             }
 
+            // 4. PING & GECİKME TESTİ
             item {
                 Card(
                     modifier = Modifier
@@ -1732,6 +1938,7 @@ fun AdvancedFeaturesScreen(
                 }
             }
 
+            // 5. DAHİLİ OTOMASYON
             item {
                 Card(
                     modifier = Modifier
@@ -1766,6 +1973,7 @@ fun AdvancedFeaturesScreen(
                 }
             }
 
+            // 6. HARİCİ OTOMASYON (TASKER/MACRODROID)
             item {
                 Card(
                     modifier = Modifier
@@ -1800,6 +2008,7 @@ fun AdvancedFeaturesScreen(
                 }
             }
 
+            // 7. SHIZUKU ENTEGRASYONU
             item {
                 Card(
                     modifier = Modifier
@@ -1842,6 +2051,7 @@ fun AdvancedFeaturesScreen(
                 }
             }
 
+            // 8. UYGULAMA KİLİDİ
             item {
                 Card(
                     modifier = Modifier
@@ -1891,6 +2101,108 @@ fun AdvancedFeaturesScreen(
         }
     }
 
+    // BİRLEŞİK HIZLI AYARLAR YÖNETİM DİYALOĞU
+    if (showTileManagementDialog) {
+        AlertDialog(
+            onDismissRequest = { showTileManagementDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.FlashOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.quick_settings_tile))
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = stringResource(R.string.tile_target_device),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    if (devices.isEmpty()) {
+                        Text(stringResource(R.string.no_devices_yet), style = MaterialTheme.typography.bodyMedium)
+                    } else {
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column {
+                                devices.forEach { dev ->
+                                    val isSelected = (tileDeviceId == dev.id) || (tileDeviceId == -1L && dev == devices.first())
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .selectable(
+                                                selected = isSelected,
+                                                onClick = { viewModel.updateTileDeviceId(dev.id) }
+                                            )
+                                            .padding(vertical = 8.dp, horizontal = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = isSelected,
+                                            onClick = { viewModel.updateTileDeviceId(dev.id) }
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(text = dev.name, style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider()
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Button(
+                            onClick = {
+                                try {
+                                    val statusBarManager = context.getSystemService(StatusBarManager::class.java)
+                                    statusBarManager?.requestAddTileService(
+                                        ComponentName(context, WolTileService::class.java),
+                                        context.getString(R.string.app_name),
+                                        Icon.createWithResource(context, R.drawable.ic_launcher_foreground),
+                                        { },
+                                        { }
+                                    )
+                                    Toast.makeText(context, context.getString(R.string.tile_request_sent), Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, e.localizedMessage, Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.add_tile_to_shade))
+                        }
+                    }
+
+                    Text(
+                        text = stringResource(R.string.tile_manual_add_guide),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTileManagementDialog = false }) {
+                    Text(stringResource(R.string.ok))
+                }
+            }
+        )
+    }
+
+    if (showBackupDialog) {
+        BackupAndRestoreDialog(
+            viewModel = viewModel,
+            onDismiss = { showBackupDialog = false }
+        )
+    }
+
     if (showInternalAutomationDialog) {
         AllSchedulesOverviewDialog(
             viewModel = viewModel,
@@ -1929,6 +2241,307 @@ fun AdvancedFeaturesScreen(
             onDismiss = {
                 showAppLockDialog = false
                 isAppLockActive = prefs.getBoolean("app_lock_enabled", false)
+            }
+        )
+    }
+}
+
+@Composable
+fun BackupAndRestoreDialog(
+    viewModel: MainViewModel,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var pendingImport by remember { mutableStateOf<BackupData?>(null) }
+    var pendingEncryptedRawJson by remember { mutableStateOf<String?>(null) }
+
+    var showExportOptionsDialog by remember { mutableStateOf(false) }
+    var exportPin by remember { mutableStateOf<String?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportBackup(
+                context = context,
+                uri = uri,
+                pin = exportPin,
+                onSuccess = {
+                    Toast.makeText(context, context.getString(R.string.backup_success), Toast.LENGTH_SHORT).show()
+                    exportPin = null
+                    onDismiss()
+                },
+                onError = { err ->
+                    Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                    exportPin = null
+                }
+            )
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val rawJson = BackupManager.readStringFromUri(context, uri)
+            if (rawJson != null) {
+                if (BackupManager.isFileEncrypted(rawJson)) {
+                    pendingEncryptedRawJson = rawJson
+                } else {
+                    val backup = BackupManager.parseBackupJson(rawJson)
+                    if (backup != null && backup.devices.isNotEmpty()) {
+                        pendingImport = backup
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.invalid_backup_file), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Backup, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.backup_and_restore))
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.backup_restore_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Button(
+                    onClick = { showExportOptionsDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.export_backup))
+                }
+
+                OutlinedButton(
+                    onClick = { importLauncher.launch(arrayOf("*/*")) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.import_backup))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.ok))
+            }
+        }
+    )
+
+    if (showExportOptionsDialog) {
+        var isEncryptedOption by remember { mutableStateOf(false) }
+        var selectedPinLength by remember { mutableIntStateOf(4) }
+        var pinInput by remember { mutableStateOf("") }
+        var pinConfirm by remember { mutableStateOf("") }
+        var pinError by remember { mutableStateOf<String?>(null) }
+
+        AlertDialog(
+            onDismissRequest = { showExportOptionsDialog = false },
+            title = { Text(stringResource(R.string.export_backup)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = !isEncryptedOption,
+                            onClick = { isEncryptedOption = false },
+                            label = { Text(stringResource(R.string.plain_backup)) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = isEncryptedOption,
+                            onClick = { isEncryptedOption = true },
+                            label = { Text(stringResource(R.string.encrypted_backup)) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    if (isEncryptedOption) {
+                        HorizontalDivider()
+                        Text(stringResource(R.string.pin_length), style = MaterialTheme.typography.titleSmall)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf(2, 4, 6, 8).forEach { len ->
+                                FilterChip(
+                                    selected = selectedPinLength == len,
+                                    onClick = {
+                                        selectedPinLength = len
+                                        pinInput = ""
+                                        pinConfirm = ""
+                                    },
+                                    label = { Text("$len ${stringResource(R.string.digits)}") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = pinInput,
+                            onValueChange = { if (it.length <= selectedPinLength && it.all { c -> c.isDigit() }) pinInput = it },
+                            label = { Text(stringResource(R.string.set_pin)) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = pinConfirm,
+                            onValueChange = { if (it.length <= selectedPinLength && it.all { c -> c.isDigit() }) pinConfirm = it },
+                            label = { Text(stringResource(R.string.confirm_pin)) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        if (pinError != null) {
+                            Text(pinError ?: "", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (isEncryptedOption) {
+                            if (pinInput.length != selectedPinLength) {
+                                pinError = context.getString(R.string.pin_required_warning)
+                                return@TextButton
+                            }
+                            if (pinInput != pinConfirm) {
+                                pinError = context.getString(R.string.pin_mismatch)
+                                return@TextButton
+                            }
+                            exportPin = pinInput
+                        } else {
+                            exportPin = null
+                        }
+                        showExportOptionsDialog = false
+                        val fileName = BackupManager.generateBackupFileName()
+                        exportLauncher.launch(fileName)
+                    }
+                ) {
+                    Text(stringResource(R.string.save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExportOptionsDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    pendingEncryptedRawJson?.let { rawJson ->
+        var pinInput by remember { mutableStateOf("") }
+        var isPinError by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { pendingEncryptedRawJson = null },
+            title = { Text(stringResource(R.string.enter_backup_pin)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.enter_backup_pin_desc), style = MaterialTheme.typography.bodyMedium)
+                    OutlinedTextField(
+                        value = pinInput,
+                        onValueChange = {
+                            if (it.length <= 8 && it.all { c -> c.isDigit() }) {
+                                pinInput = it
+                                isPinError = false
+                            }
+                        },
+                        label = { Text("PIN") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        isError = isPinError,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (isPinError) {
+                        Text(stringResource(R.string.decrypt_failed), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val decrypted = BackupManager.decryptBackupJson(rawJson, pinInput)
+                        if (decrypted != null && decrypted.devices.isNotEmpty()) {
+                            pendingEncryptedRawJson = null
+                            pendingImport = decrypted
+                        } else {
+                            isPinError = true
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingEncryptedRawJson = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    pendingImport?.let { backup ->
+        AlertDialog(
+            onDismissRequest = { pendingImport = null },
+            title = { Text(stringResource(R.string.import_confirm_title)) },
+            text = {
+                Text(stringResource(R.string.import_confirm_desc, backup.devices.size, backup.schedules.size))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.importBackup(
+                            context = context,
+                            backupData = backup,
+                            onSuccess = { count ->
+                                Toast.makeText(context, context.getString(R.string.import_success, count), Toast.LENGTH_SHORT).show()
+                                pendingImport = null
+                                onDismiss()
+                            },
+                            onError = { err ->
+                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                pendingImport = null
+                            }
+                        )
+                    }
+                ) {
+                    Text(stringResource(R.string.yes))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImport = null }) {
+                    Text(stringResource(R.string.no))
+                }
             }
         )
     }
@@ -3018,9 +3631,17 @@ fun AppLockSettingsDialog(onDismiss: () -> Unit) {
     val activity = context as? MainActivity
     val prefs = remember { context.getSharedPreferences("wol_settings", Context.MODE_PRIVATE) }
 
+    val savedPinHash = remember { prefs.getString("security_pin_hash", "") ?: "" }
+    val savedPinLength = remember { prefs.getInt("security_pin_length", 4) }
+    val hasExistingPin = savedPinHash.isNotBlank()
+
     var lockEnabled by remember { mutableStateOf(prefs.getBoolean("app_lock_enabled", false)) }
-    var selectedPinLength by remember { mutableIntStateOf(prefs.getInt("security_pin_length", 4)) }
+    var isChangingPin by remember { mutableStateOf(!hasExistingPin) }
+
+    var selectedPinLength by remember { mutableIntStateOf(savedPinLength) }
     var biometricEnabled by remember { mutableStateOf(prefs.getBoolean("security_biometric_enabled", true)) }
+    var widgetLockEnabled by remember { mutableStateOf(prefs.getBoolean("widget_lock_enabled", false)) }
+    var tileLockEnabled by remember { mutableStateOf(prefs.getBoolean("lock_tile_enabled", false)) }
 
     var pinInput by remember { mutableStateOf("") }
     var pinConfirmInput by remember { mutableStateOf("") }
@@ -3029,17 +3650,27 @@ fun AppLockSettingsDialog(onDismiss: () -> Unit) {
 
     fun performSave() {
         if (lockEnabled) {
+            val finalPinHash = if (isChangingPin) hashPin(pinInput) else savedPinHash
+            val finalPinLength = if (isChangingPin) selectedPinLength else savedPinLength
+
             prefs.edit()
                 .putBoolean("app_lock_enabled", true)
-                .putInt("security_pin_length", selectedPinLength)
-                .putString("security_pin_hash", hashPin(pinInput))
+                .putInt("security_pin_length", finalPinLength)
+                .putString("security_pin_hash", finalPinHash)
                 .putBoolean("security_biometric_enabled", biometricEnabled)
+                .putBoolean("widget_lock_enabled", widgetLockEnabled)
+                .putBoolean("lock_tile_enabled", tileLockEnabled)
                 .apply()
+
             activity?.updateWindowSecurity(true)
             activity?.isAppUnlocked?.value = true
             Toast.makeText(context, context.getString(R.string.pin_saved), Toast.LENGTH_SHORT).show()
         } else {
-            prefs.edit().putBoolean("app_lock_enabled", false).apply()
+            prefs.edit()
+                .putBoolean("app_lock_enabled", false)
+                .putBoolean("widget_lock_enabled", false)
+                .putBoolean("lock_tile_enabled", false)
+                .apply()
             activity?.updateWindowSecurity(false)
             activity?.isAppUnlocked?.value = true
         }
@@ -3075,52 +3706,80 @@ fun AppLockSettingsDialog(onDismiss: () -> Unit) {
                 if (lockEnabled) {
                     HorizontalDivider()
 
-                    Text(stringResource(R.string.pin_length), style = MaterialTheme.typography.titleSmall)
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        listOf(2, 4, 6, 8).forEach { len ->
-                            FilterChip(
-                                selected = selectedPinLength == len,
-                                onClick = {
-                                    selectedPinLength = len
+                    if (hasExistingPin && !isChangingPin) {
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = stringResource(R.string.pin_active_format, savedPinLength),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                TextButton(onClick = {
+                                    isChangingPin = true
                                     pinInput = ""
                                     pinConfirmInput = ""
-                                },
-                                label = {
-                                    Text(
-                                        text = "$len ${stringResource(R.string.digits)}",
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
+                                }) {
+                                    Text(stringResource(R.string.change_pin))
+                                }
+                            }
                         }
                     }
 
-                    OutlinedTextField(
-                        value = pinInput,
-                        onValueChange = { if (it.length <= selectedPinLength && it.all { c -> c.isDigit() }) pinInput = it },
-                        label = { Text(stringResource(R.string.set_pin)) },
-                        placeholder = { Text("•".repeat(selectedPinLength)) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (isChangingPin) {
+                        Text(stringResource(R.string.pin_length), style = MaterialTheme.typography.titleSmall)
 
-                    OutlinedTextField(
-                        value = pinConfirmInput,
-                        onValueChange = { if (it.length <= selectedPinLength && it.all { c -> c.isDigit() }) pinConfirmInput = it },
-                        label = { Text(stringResource(R.string.confirm_pin)) },
-                        placeholder = { Text("•".repeat(selectedPinLength)) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf(2, 4, 6, 8).forEach { len ->
+                                FilterChip(
+                                    selected = selectedPinLength == len,
+                                    onClick = {
+                                        selectedPinLength = len
+                                        pinInput = ""
+                                        pinConfirmInput = ""
+                                    },
+                                    label = { Text("$len ${stringResource(R.string.digits)}") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = pinInput,
+                            onValueChange = { if (it.length <= selectedPinLength && it.all { c -> c.isDigit() }) pinInput = it },
+                            label = { Text(stringResource(R.string.set_pin)) },
+                            placeholder = { Text("•".repeat(selectedPinLength)) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = pinConfirmInput,
+                            onValueChange = { if (it.length <= selectedPinLength && it.all { c -> c.isDigit() }) pinConfirmInput = it },
+                            label = { Text(stringResource(R.string.confirm_pin)) },
+                            placeholder = { Text("•".repeat(selectedPinLength)) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -3141,6 +3800,44 @@ fun AppLockSettingsDialog(onDismiss: () -> Unit) {
                         )
                     }
 
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.lock_widgets), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                text = stringResource(R.string.lock_widgets_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = widgetLockEnabled,
+                            onCheckedChange = { widgetLockEnabled = it }
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.lock_tile), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                text = stringResource(R.string.lock_tile_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = tileLockEnabled,
+                            onCheckedChange = { tileLockEnabled = it }
+                        )
+                    }
+
                     if (errorMessage != null) {
                         Text(
                             text = errorMessage ?: "",
@@ -3155,15 +3852,19 @@ fun AppLockSettingsDialog(onDismiss: () -> Unit) {
             TextButton(
                 onClick = {
                     if (lockEnabled) {
-                        if (pinInput.length != selectedPinLength) {
-                            errorMessage = context.getString(R.string.pin_required_warning)
-                            return@TextButton
+                        if (isChangingPin) {
+                            if (pinInput.length != selectedPinLength) {
+                                errorMessage = context.getString(R.string.pin_required_warning)
+                                return@TextButton
+                            }
+                            if (pinInput != pinConfirmInput) {
+                                errorMessage = context.getString(R.string.pin_mismatch)
+                                return@TextButton
+                            }
+                            showConfirmSaveDialog = true
+                        } else {
+                            performSave()
                         }
-                        if (pinInput != pinConfirmInput) {
-                            errorMessage = context.getString(R.string.pin_mismatch)
-                            return@TextButton
-                        }
-                        showConfirmSaveDialog = true
                     } else {
                         performSave()
                     }
@@ -3302,7 +4003,7 @@ fun DnsQueryDialog(onDismiss: () -> Unit) {
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = DnsIcon,
+                    imageVector = Icons.Default.Dns,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -4353,212 +5054,3 @@ fun DeviceStatusBadge(
         }
     }
 }
-
-private var _computerIcon: ImageVector? = null
-
-private val ComputerIcon: ImageVector
-    get() {
-        if (_computerIcon != null) return _computerIcon!!
-        _computerIcon = ImageVector.Builder(
-            name = "Computer",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(20.0f, 18.0f)
-            curveTo(20.55f, 18.0f, 21.0f, 17.55f, 21.0f, 17.0f)
-            lineTo(21.0f, 5.0f)
-            curveTo(21.0f, 4.45f, 20.55f, 4.0f, 20.0f, 4.0f)
-            lineTo(4.0f, 4.0f)
-            curveTo(3.45f, 4.0f, 3.0f, 4.45f, 3.0f, 5.0f)
-            lineTo(3.0f, 17.0f)
-            curveTo(3.0f, 17.55f, 3.45f, 18.0f, 4.0f, 18.0f)
-            lineTo(0.0f, 18.0f)
-            lineTo(0.0f, 20.0f)
-            lineTo(24.0f, 20.0f)
-            lineTo(24.0f, 18.0f)
-            close()
-            moveTo(5.0f, 6.0f)
-            lineTo(19.0f, 6.0f)
-            lineTo(19.0f, 16.0f)
-            lineTo(5.0f, 16.0f)
-            close()
-        }.build()
-        return _computerIcon!!
-    }
-
-private var _paletteIcon: ImageVector? = null
-
-private val PaletteIcon: ImageVector
-    get() {
-        if (_paletteIcon != null) return _paletteIcon!!
-        _paletteIcon = ImageVector.Builder(
-            name = "Palette",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(12.0f, 3.0f)
-            curveTo(6.5f, 3.0f, 2.0f, 6.5f, 2.0f, 12.0f)
-            curveTo(2.0f, 16.5f, 5.5f, 20.0f, 10.0f, 20.0f)
-            curveTo(10.55f, 20.0f, 11.0f, 19.55f, 11.0f, 19.0f)
-            curveTo(11.0f, 18.75f, 10.9f, 18.5f, 10.8f, 18.3f)
-            curveTo(10.5f, 17.7f, 10.3f, 17.1f, 10.3f, 16.5f)
-            curveTo(10.3f, 15.1f, 11.4f, 14.0f, 12.8f, 14.0f)
-            lineTo(14.5f, 14.0f)
-            curveTo(17.5f, 14.0f, 20.0f, 11.5f, 20.0f, 8.5f)
-            curveTo(20.0f, 5.5f, 16.4f, 3.0f, 12.0f, 3.0f)
-            close()
-            moveTo(6.5f, 12.0f)
-            curveTo(5.7f, 12.0f, 5.0f, 11.3f, 5.0f, 10.5f)
-            curveTo(5.0f, 9.7f, 5.7f, 9.0f, 6.5f, 9.0f)
-            curveTo(7.3f, 9.0f, 8.0f, 9.7f, 8.0f, 10.5f)
-            curveTo(8.0f, 11.3f, 7.3f, 12.0f, 6.5f, 12.0f)
-            close()
-            moveTo(9.5f, 8.0f)
-            curveTo(8.7f, 8.0f, 8.0f, 7.3f, 8.0f, 6.5f)
-            curveTo(8.0f, 5.7f, 8.7f, 5.0f, 9.5f, 5.0f)
-            curveTo(10.3f, 5.0f, 11.0f, 5.7f, 11.0f, 6.5f)
-            curveTo(11.0f, 7.3f, 10.3f, 8.0f, 9.5f, 8.0f)
-            close()
-            moveTo(14.5f, 8.0f)
-            curveTo(13.7f, 8.0f, 13.0f, 7.3f, 13.0f, 6.5f)
-            curveTo(13.0f, 5.7f, 13.7f, 5.0f, 14.5f, 5.0f)
-            curveTo(15.3f, 5.0f, 16.0f, 5.7f, 16.0f, 6.5f)
-            curveTo(16.0f, 7.3f, 15.3f, 8.0f, 14.5f, 8.0f)
-            close()
-            moveTo(17.5f, 12.0f)
-            curveTo(16.7f, 12.0f, 16.0f, 11.3f, 16.0f, 10.5f)
-            curveTo(16.0f, 9.7f, 16.7f, 9.0f, 17.5f, 9.0f)
-            curveTo(18.3f, 9.0f, 19.0f, 9.7f, 19.0f, 10.5f)
-            curveTo(19.0f, 11.3f, 18.3f, 12.0f, 17.5f, 12.0f)
-            close()
-        }.build()
-        return _paletteIcon!!
-    }
-
-private var _languageIcon: ImageVector? = null
-
-private val LanguageIcon: ImageVector
-    get() {
-        if (_languageIcon != null) return _languageIcon!!
-        _languageIcon = ImageVector.Builder(
-            name = "Language",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(11.99f, 2.0f)
-            curveTo(6.47f, 2.0f, 2.0f, 6.48f, 2.0f, 12.0f)
-            curveTo(2.0f, 17.52f, 6.47f, 22.0f, 11.99f, 22.0f)
-            curveTo(17.52f, 22.0f, 22.0f, 17.52f, 22.0f, 12.0f)
-            curveTo(22.0f, 6.48f, 17.52f, 2.0f, 11.99f, 2.0f)
-            close()
-            moveTo(18.92f, 8.0f)
-            lineTo(15.97f, 8.0f)
-            curveTo(15.64f, 6.6f, 15.12f, 5.27f, 14.44f, 4.04f)
-            curveTo(16.39f, 4.88f, 17.95f, 6.26f, 18.92f, 8.0f)
-            close()
-            moveTo(12.0f, 4.04f)
-            curveTo(12.83f, 5.24f, 13.48f, 6.59f, 13.91f, 8.0f)
-            lineTo(10.09f, 8.0f)
-            curveTo(10.52f, 6.59f, 11.17f, 5.24f, 12.0f, 4.04f)
-            close()
-            moveTo(4.26f, 14.0f)
-            curveTo(4.1f, 13.36f, 4.0f, 12.69f, 4.0f, 12.0f)
-            curveTo(4.0f, 11.31f, 4.1f, 10.64f, 4.26f, 10.0f)
-            lineTo(7.64f, 10.0f)
-            curveTo(7.55f, 10.65f, 7.5f, 11.32f, 7.5f, 12.0f)
-            curveTo(7.5f, 12.68f, 7.55f, 13.35f, 7.64f, 14.0f)
-            lineTo(4.26f, 14.0f)
-            close()
-            moveTo(5.08f, 16.0f)
-            lineTo(8.03f, 16.0f)
-            curveTo(8.36f, 17.4f, 8.88f, 18.73f, 9.56f, 19.96f)
-            curveTo(7.61f, 19.12f, 6.05f, 17.74f, 5.08f, 16.0f)
-            close()
-            moveTo(8.03f, 8.0f)
-            lineTo(5.08f, 8.0f)
-            curveTo(6.05f, 6.26f, 7.61f, 4.88f, 9.56f, 4.04f)
-            curveTo(8.88f, 5.27f, 8.36f, 6.6f, 8.03f, 8.0f)
-            close()
-            moveTo(12.0f, 19.96f)
-            curveTo(11.17f, 18.76f, 10.52f, 17.41f, 10.09f, 16.0f)
-            lineTo(13.91f, 16.0f)
-            curveTo(13.48f, 17.41f, 12.83f, 18.76f, 12.0f, 19.96f)
-            close()
-            moveTo(14.34f, 14.0f)
-            lineTo(9.66f, 14.0f)
-            curveTo(9.55f, 13.35f, 9.5f, 12.68f, 9.5f, 12.0f)
-            curveTo(9.5f, 11.32f, 9.55f, 10.65f, 9.66f, 10.0f)
-            lineTo(14.34f, 10.0f)
-            curveTo(14.45f, 10.65f, 14.5f, 11.32f, 14.5f, 12.0f)
-            curveTo(14.5f, 12.68f, 14.45f, 13.35f, 14.34f, 14.0f)
-            close()
-            moveTo(14.44f, 19.96f)
-            curveTo(15.12f, 18.73f, 15.64f, 17.4f, 15.97f, 16.0f)
-            lineTo(18.92f, 16.0f)
-            curveTo(17.95f, 17.74f, 16.39f, 19.12f, 14.44f, 19.96f)
-            close()
-            moveTo(16.36f, 14.0f)
-            curveTo(16.45f, 13.35f, 16.5f, 12.68f, 16.5f, 12.0f)
-            curveTo(16.5f, 11.32f, 16.45f, 10.65f, 16.36f, 10.0f)
-            lineTo(19.74f, 10.0f)
-            curveTo(19.9f, 10.64f, 20.0f, 11.31f, 20.0f, 12.0f)
-            curveTo(20.0f, 12.69f, 19.9f, 13.36f, 19.74f, 14.0f)
-            lineTo(16.36f, 14.0f)
-            close()
-        }.build()
-        return _languageIcon!!
-    }
-
-private var _dnsIcon: ImageVector? = null
-
-private val DnsIcon: ImageVector
-    get() {
-        if (_dnsIcon != null) return _dnsIcon!!
-        _dnsIcon = ImageVector.Builder(
-            name = "Dns",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).path(fill = SolidColor(Color.Black)) {
-            moveTo(20.0f, 13.0f)
-            lineTo(4.0f, 13.0f)
-            curveTo(2.9f, 13.0f, 2.0f, 13.9f, 2.0f, 15.0f)
-            lineTo(2.0f, 19.0f)
-            curveTo(2.0f, 20.1f, 2.9f, 21.0f, 4.0f, 21.0f)
-            lineTo(20.0f, 21.0f)
-            curveTo(21.1f, 21.0f, 22.0f, 20.1f, 22.0f, 19.0f)
-            lineTo(22.0f, 15.0f)
-            curveTo(22.0f, 13.9f, 21.1f, 13.0f, 20.0f, 13.0f)
-            close()
-            moveTo(7.0f, 19.0f)
-            curveTo(5.9f, 19.0f, 5.0f, 18.1f, 5.0f, 17.0f)
-            curveTo(5.0f, 15.9f, 5.9f, 15.0f, 7.0f, 15.0f)
-            curveTo(8.1f, 15.0f, 9.0f, 15.9f, 9.0f, 17.0f)
-            curveTo(9.0f, 18.1f, 8.1f, 19.0f, 7.0f, 19.0f)
-            close()
-            moveTo(20.0f, 3.0f)
-            lineTo(4.0f, 3.0f)
-            curveTo(2.9f, 3.0f, 2.0f, 3.9f, 2.0f, 5.0f)
-            lineTo(2.0f, 9.0f)
-            curveTo(2.0f, 10.1f, 2.9f, 11.0f, 4.0f, 11.0f)
-            lineTo(20.0f, 11.0f)
-            curveTo(21.1f, 11.0f, 22.0f, 10.1f, 22.0f, 9.0f)
-            lineTo(22.0f, 5.0f)
-            curveTo(22.0f, 3.9f, 21.1f, 3.0f, 20.0f, 3.0f)
-            close()
-            moveTo(7.0f, 9.0f)
-            curveTo(5.9f, 9.0f, 5.0f, 8.1f, 5.0f, 7.0f)
-            curveTo(5.0f, 5.9f, 5.0f, 5.0f, 7.0f, 5.0f)
-            curveTo(8.1f, 5.0f, 9.0f, 5.9f, 9.0f, 7.0f)
-            curveTo(9.0f, 8.1f, 8.1f, 9.0f, 7.0f, 9.0f)
-            close()
-        }.build()
-        return _dnsIcon!!
-    }

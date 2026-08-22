@@ -2,10 +2,15 @@ package com.mai.wol
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.mai.wol.automation.AlarmScheduler
+import com.mai.wol.automation.ShortcutHelper
+import com.mai.wol.automation.WolTileService
+import com.mai.wol.data.BackupData
+import com.mai.wol.data.BackupManager
 import com.mai.wol.data.DeviceDao
 import com.mai.wol.data.DeviceEntity
 import com.mai.wol.data.ScheduleDao
@@ -13,18 +18,22 @@ import com.mai.wol.data.ScheduleEntity
 import com.mai.wol.network.DeviceStatus
 import com.mai.wol.network.DeviceStatusChecker
 import com.mai.wol.network.WolManager
+import com.mai.wol.widget.DeviceIconWidgetProvider
+import com.mai.wol.widget.DeviceWidgetProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class MainViewModel(
     private val deviceDao: DeviceDao,
     private val scheduleDao: ScheduleDao,
-    private val sharedPreferences: SharedPreferences
+    private val sharedPreferences: SharedPreferences,
+    private val appContext: Context
 ) : ViewModel() {
 
     val devices: StateFlow<List<DeviceEntity>> = deviceDao.getAllDevices()
@@ -41,13 +50,24 @@ class MainViewModel(
             initialValue = emptyList()
         )
 
+    init {
+        viewModelScope.launch {
+            devices.collect { devList ->
+                ShortcutHelper.updateShortcuts(appContext, devList)
+                WolTileService.requestUpdate(appContext)
+            }
+        }
+    }
+
     private val _packetCount = MutableStateFlow(sharedPreferences.getInt("packet_count", 3))
     val packetCount: StateFlow<Int> = _packetCount.asStateFlow()
 
     private val _statusCheckInterval = MutableStateFlow(sharedPreferences.getInt("status_check_interval", 5000))
     val statusCheckInterval: StateFlow<Int> = _statusCheckInterval.asStateFlow()
 
-    // KART GÖRÜNÜMÜ & GİZLİLİK AYARLARI ("show", "mask", "hide")
+    private val _tileDeviceId = MutableStateFlow(sharedPreferences.getLong("tile_device_id", -1L))
+    val tileDeviceId: StateFlow<Long> = _tileDeviceId.asStateFlow()
+
     private val _cardMacDisplay = MutableStateFlow(sharedPreferences.getString("card_mac_display", "show") ?: "show")
     val cardMacDisplay: StateFlow<String> = _cardMacDisplay.asStateFlow()
 
@@ -71,6 +91,12 @@ class MainViewModel(
 
     private val _deviceStatuses = MutableStateFlow<Map<Long, DeviceStatus>>(emptyMap())
     val deviceStatuses: StateFlow<Map<Long, DeviceStatus>> = _deviceStatuses.asStateFlow()
+
+    fun updateTileDeviceId(deviceId: Long) {
+        _tileDeviceId.value = deviceId
+        sharedPreferences.edit().putLong("tile_device_id", deviceId).apply()
+        WolTileService.requestUpdate(appContext)
+    }
 
     fun updatePacketCount(count: Int) {
         val validCount = count.coerceIn(1, 20)
@@ -114,18 +140,27 @@ class MainViewModel(
                 secureOnPassword = secureOn?.takeIf { it.isNotBlank() }
             )
             deviceDao.insertDevice(entity)
+            DeviceWidgetProvider.updateAllWidgets(appContext)
+            DeviceIconWidgetProvider.updateAllWidgets(appContext)
+            WolTileService.requestUpdate(appContext)
         }
     }
 
     fun updateDevice(device: DeviceEntity) {
         viewModelScope.launch {
             deviceDao.updateDevice(device)
+            DeviceWidgetProvider.updateAllWidgets(appContext)
+            DeviceIconWidgetProvider.updateAllWidgets(appContext)
+            WolTileService.requestUpdate(appContext)
         }
     }
 
     fun deleteDevice(device: DeviceEntity) {
         viewModelScope.launch {
             deviceDao.deleteDevice(device)
+            DeviceWidgetProvider.updateAllWidgets(appContext)
+            DeviceIconWidgetProvider.updateAllWidgets(appContext)
+            WolTileService.requestUpdate(appContext)
         }
     }
 
@@ -148,7 +183,6 @@ class MainViewModel(
         }
     }
 
-    // --- ZAMANLAYICI METOTLARI ---
     fun getSchedulesForDevice(deviceId: Long): Flow<List<ScheduleEntity>> {
         return scheduleDao.getSchedulesForDevice(deviceId)
     }
@@ -211,17 +245,79 @@ class MainViewModel(
             )
         }
     }
+
+    fun exportBackup(
+        context: Context,
+        uri: Uri,
+        pin: String? = null,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val currentDevices = deviceDao.getAllDevices().firstOrNull() ?: emptyList()
+                val currentSchedules = scheduleDao.getAllSchedules().firstOrNull() ?: emptyList()
+                val jsonContent = BackupManager.exportBackupToJson(currentDevices, currentSchedules, pin)
+                val success = BackupManager.writeStringToUri(context, uri, jsonContent)
+                if (success) {
+                    onSuccess()
+                } else {
+                    onError("Dosya kaydedilemedi")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Hata oluştu")
+            }
+        }
+    }
+
+    fun importBackup(
+        context: Context,
+        backupData: BackupData,
+        onSuccess: (Int) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                var importedCount = 0
+                val oldToNewIdMap = mutableMapOf<Long, Long>()
+
+                for (dev in backupData.devices) {
+                    val newDev = dev.copy(id = 0L)
+                    val newId = deviceDao.insertDevice(newDev)
+                    oldToNewIdMap[dev.id] = newId
+                    importedCount++
+                }
+
+                for (sch in backupData.schedules) {
+                    val targetDeviceId = oldToNewIdMap[sch.deviceId] ?: sch.deviceId
+                    val newSch = sch.copy(id = 0L, deviceId = targetDeviceId)
+                    val schId = scheduleDao.insertSchedule(newSch)
+                    if (newSch.isEnabled) {
+                        AlarmScheduler.scheduleAlarm(context, newSch.copy(id = schId))
+                    }
+                }
+
+                DeviceWidgetProvider.updateAllWidgets(appContext)
+                DeviceIconWidgetProvider.updateAllWidgets(appContext)
+                WolTileService.requestUpdate(appContext)
+                onSuccess(importedCount)
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Hata oluştu")
+            }
+        }
+    }
 }
 
 class MainViewModelFactory(
     private val deviceDao: DeviceDao,
     private val scheduleDao: ScheduleDao,
-    private val sharedPreferences: SharedPreferences
+    private val sharedPreferences: SharedPreferences,
+    private val appContext: Context
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(deviceDao, scheduleDao, sharedPreferences) as T
+            return MainViewModel(deviceDao, scheduleDao, sharedPreferences, appContext) as T
         }
         throw IllegalArgumentException("Bilinmeyen ViewModel sınıfı")
     }

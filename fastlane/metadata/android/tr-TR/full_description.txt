@@ -1,11 +1,16 @@
 MaiWoL, yerel ağınızdaki (LAN) veya internet üzerindeki (WAN / DDNS) bilgisayar ve sunucularınızı tek dokunuşla uyandırmanızı sağlayan modern, güvenli ve %100 açık kaynaklı (FOSS) bir Wake-on-LAN uygulamasıdır.
 
-Öne Çıkan Özellikler:
-• Güçlü WoL Motoru: Çoklu Magic Packet gönderimi ve SecureOn şifre desteği.
-• Dahili Otomasyon: Belirli tarih/saat için tek seferlik veya haftalık tekrarlı zamanlayıcılar.
+v2.0.0 ile Öne Çıkan Özellikler:
+• Güçlü WoL Motoru: Çoklu paket gönderimi ve SecureOn 6-bayt şifre desteği.
+• Ana Ekran Widget'ları: 2x1 Kompakt Kart ve 1x1 Hızlı Uyandırma simgesi (Kilit koruma desteği).
+• Hızlı Ayarlar Bildirim Butonu (Tile): Bildirim çekmecesinden tek dokunuşla bilgisayar açma.
+• Dinamik Uygulama Kısayolları: Uygulama simgesine basılı tutarak hızlı uyandırma.
+• Güvenli Yedekleme (.maiwol): AES-256 PIN şifreli veya düz metin cihaz/zamanlama yedekleme ve geri yükleme.
+• Dahili Otomasyon: Belirli tarih/saat veya haftalık tekrarlı otomatik uyandırma zamanlayıcıları.
 • Harici Otomasyon: Tasker, MacroDroid ve ADB broadcast komutları ile uzaktan tetikleme.
-• Canlı Durum Takibi: Bilgisayarın açık veya kapalı olduğunu ICMP ping ve servis portlarıyla canlı izleme.
-• Kart Özelleştirme & Gizlilik: Kartlardaki MAC, IP ve Port bilgilerini gizleme veya sansürleme (*****).
-• Banka Seviyesi Güvenlik: SHA-256 PIN ve Biyometrik kilit, arka planda ekran gizleme (FLAG_SECURE).
-• Shizuku Entegrasyonu: Ağ taramasında MAC adreslerini otomatik okuma.
+• Canlı Durum Takibi: ICMP ping ve işletim sistemi servis portları (SMB, RPC, RDP, SSH) ile anlık açık/kapalı kontrolü.
+• Kart Özelleştirme & Gizlilik: MAC, IP ve Port bilgilerini gizleme veya sansürleme (*****).
+• Banka Seviyesi Güvenlik: SHA-256 PIN ve Biyometrik kilit, FLAG_SECURE ekran koruması (Widget ve Tile kilitleme desteği).
+• Shizuku Entegrasyonu: Ağ taramasında MAC adreslerini root'suz otomatik okuma.
+• Dahili Ağ Araçları: DNS Sorgu ve Canlı Ping/Gecikme testi terminali.
 • %100 Gizlilik: Sıfır reklam, sıfır Google izleyicisi, sıfır telemetri.

@@ -34,7 +34,83 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- .maiwol Dosyası İle Açma Filtresi -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="*/*" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.maiwol" />
+            </intent-filter>
         </activity>
+
+        <!-- Kısayollardan Hızlı Uyandırma -->
+        <activity
+            android:name=".ShortcutWakeActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:exported="true" />
+
+        <!-- Widget'tan Uyandırırken Açılan Güvenli PIN Kilit Ekranı -->
+        <activity
+            android:name=".WidgetUnlockActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.WoLByErdem" />
+
+        <!-- Widget Cihaz Seçim Ekranı -->
+        <activity
+            android:name=".widget.DeviceWidgetConfigureActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE"/>
+            </intent-filter>
+        </activity>
+
+        <!-- 1. Seçenek: 2x1 Kart Widget Alıcısı -->
+        <receiver
+            android:name=".widget.DeviceWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+                <action android:name="com.mai.wol.ACTION_WIDGET_WAKE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_device_wake_info"/>
+        </receiver>
+
+        <!-- 2. Seçenek: 1x1 Hızlı İkon Widget Alıcısı -->
+        <receiver
+            android:name=".widget.DeviceIconWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+                <action android:name="com.mai.wol.ACTION_ICON_WIDGET_WAKE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_device_icon_info"/>
+        </receiver>
+
+        <!-- Hızlı Ayarlar Bildirim Çekmecesi Butonu Servisi -->
+        <service
+            android:name=".automation.WolTileService"
+            android:icon="@drawable/ic_launcher_foreground"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
         <!-- Shizuku Sağlayıcısı -->
         <provider
