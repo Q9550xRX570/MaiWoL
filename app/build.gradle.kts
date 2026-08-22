@@ -7,16 +7,16 @@ plugins {
 
 android {
     namespace = "com.mai.wol"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.mai.wol"
 
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
 
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

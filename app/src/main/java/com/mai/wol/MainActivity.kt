@@ -100,6 +100,8 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import android.content.Intent
+import android.net.Uri
 
 class MainActivity : ComponentActivity() {
 
@@ -391,6 +393,43 @@ fun HomeScreen(
                                 text = stringResource(R.string.settings),
                                 modifier = Modifier.padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 12.dp),
                                 style = MaterialTheme.typography.titleLarge
+                            )
+
+                            // 0. RESMİ WEB SİTESİ (maiwol.com)
+                            ListItem(
+                                headlineContent = { Text(stringResource(R.string.website)) },
+                                supportingContent = {
+                                    Column {
+                                        Text(
+                                            text = stringResource(R.string.website_description),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "maiwol.com",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        imageVector = Icons.Default.OpenInNew,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                modifier = Modifier
+                                    .padding(horizontal = 8.dp)
+                                    .clickable {
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://maiwol.com"))
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {}
+                                    }
                             )
 
                             // 1. SIHIRLI PAKET SAYISI

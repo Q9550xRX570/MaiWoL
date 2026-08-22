@@ -1,7 +1,8 @@
 # ⚡ MaiWoL
 
-A modern, privacy-focused, and 100% Free and Open Source (FOSS) Wake-on-LAN Android application.
+A modern, enterprise-grade, lightweight, and 100% Free and Open Source (FOSS) Wake-on-LAN suite for Android.
 
+[![Website](https://img.shields.io/badge/Website-maiwol.com-blue?style=flat&logo=googlechrome&logoColor=white)](https://maiwol.com)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![FOSS](https://img.shields.io/badge/FOSS-100%25-success.svg)](https://f-droid.org)
 [![Platform](https://img.shields.io/badge/Platform-Android_7.0+-green.svg)](https://android.com)
@@ -10,22 +11,44 @@ A modern, privacy-focused, and 100% Free and Open Source (FOSS) Wake-on-LAN Andr
 
 ---
 
-## ✨ Features
+## 🌟 Architectural & Feature Highlights
 
-- 🚀 **Powerful WoL Engine:** Send Magic Packets over local subnet (Broadcast) or Internet (WAN / DDNS) with configurable packet count (1–20).
-- 🔒 **SecureOn Support:** Optional 6-byte password protection for enterprise BIOS/NICs.
-- ⏰ **Internal Scheduling:**
-  - One-time automated wake-up by specific date & time.
-  - Weekly recurring schedules (e.g., weekdays, weekends, custom days).
-  - Drag-and-drop schedule card reordering.
-- ⚡ **External Automation:** Wake devices remotely via Tasker, MacroDroid, or ADB broadcast intents.
-- 🟢 **Live Status Polling:** Real-time online/offline monitoring via ICMP ping & OS service ports (SMB, RPC, RDP, SSH). Adjustable polling rate (1s–60s or disabled).
-- 🕵️ **Card Privacy Customization:** Option to show, mask (`*****`), or completely hide sensitive MAC, IP, and Port details on device cards.
-- 🛡️ **App Lock & Security:** SHA-256 PIN hashing & Biometric unlock (Fingerprint / Face). Blank window preview in task switcher (`FLAG_SECURE`).
-- 🔍 **Shizuku / ADB Integration:** Read ARP cache without root to automatically discover MAC addresses on modern Android versions.
-- 🛠️ **Network Diagnostics:** Built-in DNS Lookup and Ping & Latency test tools.
-- 🎨 **Material You Design:** Clean Material 3 UI supporting Dynamic, Light, and Dark themes.
-- 🌐 **Multilingual:** Full Turkish and English localizations.
+### 🚀 High-Performance WoL Dispatch Engine
+- **Flexible Network Routing:** Direct UDP Magic Packet transmission via Local Subnet Broadcast (`255.255.255.255` / Subnet Directed) or WAN / DDNS endpoints.
+- **Enterprise SecureOn:** Full support for BIOS-level 6-byte password hex injection.
+- **Resilient Multi-Burst Transmission:** Configurable packet burst counter (1–20 packets with precision 50ms pacing) to bypass packet loss across complex switches and routers.
+
+### 🟢 Multi-Tier Intelligent Status Polling
+- **False-Positive Resistant:** Raw ICMP ping parser filtering out deceptive router echo replies (e.g., host unreachable, 100% packet loss drops).
+- **Core OS Service Verification:** Deep TCP polling for OS daemon ports (**SMB 445, RPC 135, RDP 3389, SSH 22, LLMNR**) when ICMP is blocked by firewalls.
+- **Tri-State Device Diagnostics:** Immediate identification of **ONLINE** (OS Active), **STANDBY** (Device powered off but network path verified for WoL), or **UNREACHABLE** states.
+
+### 🔍 Rootless ARP Discovery via Shizuku (Binder IPC)
+- Overcomes Android 10+ privacy restrictions blocking `/proc/net/arp`.
+- Direct IPC interaction via **Shizuku API** executing privileged `ip neigh` and `sysfs` queries to dynamically discover true physical MAC addresses across the LAN without rooting.
+
+### ⏰ Resilient Internal Automation & Scheduling
+- **Precision Alarms:** Backed by `AlarmManager.RTC_WAKEUP` with exact alarm scheduling.
+- **WakeLock Concurrency:** Automatic `PowerManager.PARTIAL_WAKE_LOCK` acquisition preventing CPU suspension during packet dispatch.
+- **Reboot Persistence:** `RECEIVE_BOOT_COMPLETED` receiver reconstructing all Room Database task queues upon device restart.
+- **Interactive UI:** Smooth drag-and-drop schedule card reordering with real-time feedback.
+
+### ⚡ Headless External Automation (Tasker / MacroDroid / ADB)
+- Dedicated background intent receiver (`com.mai.wol.ACTION_WAKE_DEVICE`) accepting dynamic parameters by device name or MAC address without launching the GUI.
+
+### 🛡️ Hardened App Security & Privacy
+- **Cryptographic PIN Storage:** Irreversible **SHA-256** hash protection.
+- **Hardware-Backed Biometrics:** Integrated with Android `BiometricPrompt` (Fingerprint & Face Recognition).
+- **Window Anti-Leak Protection:** Enforced `FLAG_SECURE` preventing screen captures and obscuring recent app snapshots in the Android task switcher.
+- **Card Data Masking:** Dynamic visibility controls to Show, Mask (`*****`), or completely Hide MAC, IP, and Port parameters on screen.
+
+### 🛠️ Built-in Network Diagnostics Suite
+- **DNS Resolver:** Native hostname-to-IP and reverse DNS resolution utility.
+- **Ping & Latency Tester:** Live round-trip latency (RTT) and packet loss diagnostic terminal.
+
+### 🎨 Pure Jetpack Compose Architecture
+- 100% Kotlin & Material 3 implementation with dynamic Material You palette.
+- **Ultra-Lightweight Footprint (~5 MB):** Optimized with R8 minification, resource shrinking, ABI splits, and zero third-party telemetry dependencies.
 
 ---
 
@@ -56,28 +79,29 @@ Trigger wake-ups from third-party tools using standard broadcast intents:
 - **Action:** `com.mai.wol.ACTION_WAKE_DEVICE`
 - **Package:** `com.mai.wol`
 
-### Extra Parameters:
-| Extra Key | Description | Example |
-| :--- | :--- | :--- |
-| `device_name` | Saved device name | `"My PC"` |
-| `mac_address` | Target MAC address | `"AA:BB:CC:DD:EE:FF"` |
-| `ip_address` | Optional WAN / DDNS | `"home.ddns.net"` |
-| `local_ip` | Optional Local IP | `"192.168.1.100"` |
-| `port` | Optional port (Default: 9) | `9` |
+### Intent Parameters:
+| Extra Key | Type | Description | Example |
+| :--- | :--- | :--- | :--- |
+| `device_name` | String | Saved device name | `"My PC"` |
+| `mac_address` | String | Target MAC address | `"AA:BB:CC:DD:EE:FF"` |
+| `ip_address` | String | Optional WAN / DDNS host | `"home.ddns.net"` |
+| `local_ip` | String | Optional Local IP | `"192.168.1.100"` |
+| `port` | Int / String | Target UDP Port (Default: 9) | `9` |
+| `packet_count` | Int / String | Packet burst count (1–20) | `5` |
 
 ### ADB Command Example:
 ```bash
 adb shell am broadcast -a com.mai.wol.ACTION_WAKE_DEVICE -p com.mai.wol --es device_name "My PC"
-🔒 Privacy
-0% Telemetry / Analytics (No Firebase, no Google Analytics, no SDKs).
-0% Ads / Trackers.
-The app only establishes network connections directly to the target IP addresses you configure.
+🔒 Privacy & Freedom
+0% Telemetry / Analytics: Zero Google Analytics, Firebase, or tracking SDKs.
+0% Ads: Completely free of advertisements.
+Direct Networking: All socket connections are strictly point-to-point between your device and the configured network targets.
 🛠️ Build from Source
 code
 Bash
 git clone https://github.com/Q9550xRX570/MaiWoL.git
 cd MaiWoL
 ./gradlew assembleRelease
-The APKs will be generated under app/build/outputs/apk/release/.
+The optimized binaries will be generated in app/build/outputs/apk/release/.
 📜 License
-This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file for full details.

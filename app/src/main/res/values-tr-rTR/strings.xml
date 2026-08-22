@@ -154,4 +154,6 @@
     <string name="next_trigger">Sonraki tetiklenme: %1$s</string>
     <string name="completed">Tamamlandı</string>
     <string name="delete_schedule_confirm">Bu zamanlamayı silmek istediğinize emin misiniz?</string>
+    <string name="website">Web Sitesi</string>
+    <string name="website_description">maiwol.com adresini ziyaret edin</string>
 </resources>

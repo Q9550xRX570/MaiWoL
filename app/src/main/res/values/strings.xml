@@ -154,4 +154,6 @@
     <string name="next_trigger">Next trigger: %1$s</string>
     <string name="completed">Completed</string>
     <string name="delete_schedule_confirm">Are you sure you want to delete this schedule?</string>
+    <string name="website">Website</string>
+    <string name="website_description">Visit the official website</string>
 </resources>
