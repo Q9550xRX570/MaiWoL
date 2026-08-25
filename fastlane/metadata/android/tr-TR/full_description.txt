@@ -1,16 +1,20 @@
-MaiWoL, yerel ağınızdaki (LAN) veya internet üzerindeki (WAN / DDNS) bilgisayar ve sunucularınızı tek dokunuşla uyandırmanızı sağlayan modern, güvenli ve %100 açık kaynaklı (FOSS) bir Wake-on-LAN uygulamasıdır.
+MaiWoL, yerel ağınızdaki (LAN) veya internet üzerindeki (WAN / DDNS) bilgisayar ve sunucularınızı tek dokunuşla uyandırmanızı ve güvenle kapatmanızı sağlayan modern, güvenli ve %100 açık kaynaklı (FOSS) bir Wake-on-LAN ve Güç Yönetimi uygulamasıdır.
 
-v2.0.0 ile Öne Çıkan Özellikler:
-• Güçlü WoL Motoru: Çoklu paket gönderimi ve SecureOn 6-bayt şifre desteği.
-• Ana Ekran Widget'ları: 2x1 Kompakt Kart ve 1x1 Hızlı Uyandırma simgesi (Kilit koruma desteği).
+v2.2.0 ile Öne Çıkan Özellikler:
+• Uzaktan Bilgisayar Kapatma: Güvenli OpenSSH ve HTTP Webhook (GET / POST) ile bilgisayarları uzaktan tek dokunuşla kapatma veya kilitleme.
+• Zorla Kapatma (/f Parametresi): Takılan veya onay bekleyen pencereleri beklemeden %100 anında kapanmayı garanti eden komut motoru.
+• Akıllı LAN / WAN Yönlendirmesi: Evde Wi-Fi'dayken yerel IP'den, dışarıda mobil verideyken modem port yönlendirmesinden (WAN) otomatik bağlanan çift yönlü altyapı.
+• Şifre Göster/Gizle Butonu: SSH ve Webhook şifrelerini girerken doğrulamayı kolaylaştıran göz ikonu.
+• Sürüklenebilir Grup Sekmeleri: Bilgisayarları kategorilere ayırma, basılı tutup sürükleyerek sıralama ve grup sayı rozetlerini gizleme seçeneği.
+• Tek Dokunuşla Toplu Uyandırma: Seçili gruptaki tüm cihazları 80 ms kademeli gecikmeyle aynı anda uyandıran üst bar butonu.
+• Güçlü WoL Motoru: Çoklu paket gönderimi (1-20 adet) ve SecureOn 6-bayt şifre desteği.
+• Ana Ekran Widget'ları: 2x1 Kompakt Kart ve 1x1 Hızlı Uyandırma simgesi (PIN/Biyometrik kilit koruması).
 • Hızlı Ayarlar Bildirim Butonu (Tile): Bildirim çekmecesinden tek dokunuşla bilgisayar açma.
 • Dinamik Uygulama Kısayolları: Uygulama simgesine basılı tutarak hızlı uyandırma.
-• Güvenli Yedekleme (.maiwol): AES-256 PIN şifreli veya düz metin cihaz/zamanlama yedekleme ve geri yükleme.
-• Dahili Otomasyon: Belirli tarih/saat veya haftalık tekrarlı otomatik uyandırma zamanlayıcıları.
-• Harici Otomasyon: Tasker, MacroDroid ve ADB broadcast komutları ile uzaktan tetikleme.
+• Güvenli Yedekleme (.maiwol v3): Kapatma profillerini de içeren AES-256 PIN şifreli veya düz metin cihaz/zamanlama yedekleme ve geri yükleme.
 • Canlı Durum Takibi: ICMP ping ve işletim sistemi servis portları (SMB, RPC, RDP, SSH) ile anlık açık/kapalı kontrolü.
-• Kart Özelleştirme & Gizlilik: MAC, IP ve Port bilgilerini gizleme veya sansürleme (*****).
-• Banka Seviyesi Güvenlik: SHA-256 PIN ve Biyometrik kilit, FLAG_SECURE ekran koruması (Widget ve Tile kilitleme desteği).
+• Banka Seviyesi Güvenlik: SHA-256 PIN ve Biyometrik kilit, FLAG_SECURE ekran koruması.
 • Shizuku Entegrasyonu: Ağ taramasında MAC adreslerini root'suz otomatik okuma.
+• Dahili ve Harici Otomasyon: Belirli tarih/saat veya haftalık zamanlayıcılar; Tasker, MacroDroid ve ADB intent desteği.
 • Dahili Ağ Araçları: DNS Sorgu ve Canlı Ping/Gecikme testi terminali.
 • %100 Gizlilik: Sıfır reklam, sıfır Google izleyicisi, sıfır telemetri.

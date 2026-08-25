@@ -15,8 +15,8 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        versionCode = 5
-        versionName = "2.1.0"
+        versionCode = 6
+        versionName = "2.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,6 +71,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+
+    // SSH Kapatma Motoru
+    implementation("com.github.mwiede:jsch:0.2.20")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

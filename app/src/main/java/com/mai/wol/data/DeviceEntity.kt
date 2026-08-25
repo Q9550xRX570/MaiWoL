@@ -14,5 +14,12 @@ data class DeviceEntity(
     val port: Int = 9,
     val secureOnPassword: String? = null,
     val groupName: String = "",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    // Kapatma Parametreleri (Varsayılan Force Kapatma: shutdown /s /f /t 0)
+    val shutdownType: String = "NONE",
+    val shutdownPort: Int = 22,
+    val shutdownUsername: String = "",
+    val shutdownPassword: String = "",
+    val shutdownCommand: String = "shutdown /s /f /t 0",
+    val shutdownHttpUrl: String = ""
 )

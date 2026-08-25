@@ -36,7 +36,7 @@ object BackupManager {
     ): String {
         val plainRoot = JSONObject()
         plainRoot.put("app", "MaiWoL")
-        plainRoot.put("version", 2)
+        plainRoot.put("version", 3)
         plainRoot.put("timestamp", System.currentTimeMillis())
 
         val devArray = JSONArray()
@@ -50,6 +50,12 @@ object BackupManager {
             dObj.put("port", dev.port)
             dObj.put("secureOnPassword", dev.secureOnPassword ?: "")
             dObj.put("groupName", dev.groupName)
+            dObj.put("shutdownType", dev.shutdownType)
+            dObj.put("shutdownPort", dev.shutdownPort)
+            dObj.put("shutdownUsername", dev.shutdownUsername)
+            dObj.put("shutdownPassword", dev.shutdownPassword)
+            dObj.put("shutdownCommand", dev.shutdownCommand)
+            dObj.put("shutdownHttpUrl", dev.shutdownHttpUrl)
             devArray.put(dObj)
         }
         plainRoot.put("devices", devArray)
@@ -88,7 +94,7 @@ object BackupManager {
 
         val encryptedRoot = JSONObject()
         encryptedRoot.put("app", "MaiWoL")
-        encryptedRoot.put("version", 2)
+        encryptedRoot.put("version", 3)
         encryptedRoot.put("timestamp", System.currentTimeMillis())
         encryptedRoot.put("encrypted", true)
         encryptedRoot.put("salt", Base64.encodeToString(salt, Base64.NO_WRAP))
@@ -163,7 +169,13 @@ object BackupManager {
                     localIp = dObj.optString("localIp", ""),
                     port = dObj.optInt("port", 9),
                     secureOnPassword = dObj.optString("secureOnPassword", "").takeIf { it.isNotBlank() },
-                    groupName = dObj.optString("groupName", "")
+                    groupName = dObj.optString("groupName", ""),
+                    shutdownType = dObj.optString("shutdownType", "NONE"),
+                    shutdownPort = dObj.optInt("shutdownPort", 22),
+                    shutdownUsername = dObj.optString("shutdownUsername", ""),
+                    shutdownPassword = dObj.optString("shutdownPassword", ""),
+                    shutdownCommand = dObj.optString("shutdownCommand", "shutdown /s /t 0"),
+                    shutdownHttpUrl = dObj.optString("shutdownHttpUrl", "")
                 )
                 devicesList.add(dev)
             }

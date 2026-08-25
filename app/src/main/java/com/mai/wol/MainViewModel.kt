@@ -17,6 +17,7 @@ import com.mai.wol.data.ScheduleDao
 import com.mai.wol.data.ScheduleEntity
 import com.mai.wol.network.DeviceStatus
 import com.mai.wol.network.DeviceStatusChecker
+import com.mai.wol.network.ShutdownManager
 import com.mai.wol.network.WolManager
 import com.mai.wol.widget.DeviceIconWidgetProvider
 import com.mai.wol.widget.DeviceWidgetProvider
@@ -233,7 +234,13 @@ class MainViewModel(
         localIp: String,
         port: Int,
         secureOn: String?,
-        groupName: String = ""
+        groupName: String = "",
+        shutdownType: String = "NONE",
+        shutdownPort: Int = 22,
+        shutdownUsername: String = "",
+        shutdownPassword: String = "",
+        shutdownCommand: String = "shutdown /s /t 0",
+        shutdownHttpUrl: String = ""
     ) {
         viewModelScope.launch {
             val trimmedGroup = groupName.trim()
@@ -244,7 +251,13 @@ class MainViewModel(
                 localIp = localIp.trim(),
                 port = if (port <= 0) 9 else port,
                 secureOnPassword = secureOn?.takeIf { it.isNotBlank() },
-                groupName = trimmedGroup
+                groupName = trimmedGroup,
+                shutdownType = shutdownType,
+                shutdownPort = shutdownPort,
+                shutdownUsername = shutdownUsername,
+                shutdownPassword = shutdownPassword,
+                shutdownCommand = shutdownCommand,
+                shutdownHttpUrl = shutdownHttpUrl
             )
             deviceDao.insertDevice(entity)
             if (trimmedGroup.isNotBlank()) {
@@ -359,6 +372,16 @@ class MainViewModel(
         }
     }
 
+    fun sendShutdown(device: DeviceEntity, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = ShutdownManager.executeShutdown(device)
+            result.fold(
+                onSuccess = { msg -> onResult(true, msg) },
+                onFailure = { err -> onResult(false, err.localizedMessage ?: err.message) }
+            )
+        }
+    }
+
     fun wakeAllDevices(deviceList: List<DeviceEntity>, onComplete: (Int, Int) -> Unit) {
         viewModelScope.launch {
             val currentPacketCount = _packetCount.value
@@ -379,7 +402,7 @@ class MainViewModel(
                     onFailure = { failCount++ }
                 )
                 if (index < deviceList.size - 1) {
-                    delay(80) // Ağda paket düşmesini önleyen kademeli gecikme
+                    delay(80)
                 }
             }
 

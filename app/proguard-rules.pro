@@ -13,5 +13,8 @@
     <init>(...);
 }
 
-# Ağ ve WoL Paket Motorunu Koru
+# Ağ, WoL ve SSH Kapatma Motorunu Koru
 -keep class com.mai.wol.network.** { *; }
+-keep class com.jcraft.jsch.** { *; }
+-dontwarn com.jcraft.jsch.**
+-dontwarn org.ietf.jgss.**

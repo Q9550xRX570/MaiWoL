@@ -39,12 +39,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -91,6 +93,7 @@ import com.mai.wol.data.BackupManager
 import com.mai.wol.data.DeviceEntity
 import com.mai.wol.data.ScheduleEntity
 import com.mai.wol.network.DeviceStatus
+import com.mai.wol.network.DeviceStatusChecker
 import com.mai.wol.network.NetworkScanner
 import com.mai.wol.network.ScannedDevice
 import com.mai.wol.ui.theme.MaiWoLTheme
@@ -438,6 +441,7 @@ fun HomeScreen(
     var showAddGroupDialog by remember { mutableStateOf(false) }
     var groupToManage by remember { mutableStateOf<String?>(null) }
     var deviceToChangeGroup by remember { mutableStateOf<DeviceEntity?>(null) }
+    var deviceToShutdown by remember { mutableStateOf<DeviceEntity?>(null) }
 
     LaunchedEffect(devices, statusCheckInterval) {
         if (statusCheckInterval > 0) {
@@ -551,12 +555,14 @@ fun HomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .padding(bottom = 16.dp)
+                                .verticalScroll(rememberScrollState())
+                                .padding(vertical = 12.dp)
                         ) {
                             Text(
                                 text = stringResource(R.string.settings),
-                                modifier = Modifier.padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 12.dp),
-                                style = MaterialTheme.typography.titleLarge
+                                modifier = Modifier.padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = 12.dp),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
                             )
 
                             // 1. WEB SİTESİ
@@ -572,36 +578,16 @@ fun HomeScreen(
                                     .padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Public,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.Public, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.website),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(stringResource(R.string.website), style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.website_description),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(stringResource(R.string.website_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "maiwol.com",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    Text("maiwol.com", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 }
-                                Icon(
-                                    imageVector = Icons.Default.OpenInNew,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                Icon(Icons.Default.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             }
 
                             // 2. WOL PAKET SAYISI
@@ -612,29 +598,14 @@ fun HomeScreen(
                                     .padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Layers,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.Layers, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.wol_packet_count),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(stringResource(R.string.wol_packet_count), style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.packet_count_description),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(stringResource(R.string.packet_count_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.packets_format, packetCount),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    Text(stringResource(R.string.packets_format, packetCount), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
 
@@ -646,23 +617,12 @@ fun HomeScreen(
                                     .padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Timer,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.status_check_interval),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(stringResource(R.string.status_check_interval), style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.status_check_interval_desc),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(stringResource(R.string.status_check_interval_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = if (statusCheckInterval == 0) stringResource(R.string.disabled)
@@ -673,7 +633,7 @@ fun HomeScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.weight(1f))
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
 
                             // 4. GRUP ÖZELLEŞTİRME
                             Row(
@@ -683,23 +643,12 @@ fun HomeScreen(
                                     .padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Folder,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.group_customization),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(stringResource(R.string.group_customization), style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.group_customization_desc),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(stringResource(R.string.group_customization_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
 
@@ -711,23 +660,12 @@ fun HomeScreen(
                                     .padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Tune,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.card_customization),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(stringResource(R.string.card_customization), style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.card_customization_desc),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(stringResource(R.string.card_customization_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
 
@@ -739,29 +677,14 @@ fun HomeScreen(
                                     .padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Palette,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.app_theme),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(stringResource(R.string.app_theme), style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.app_theme_description),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(stringResource(R.string.app_theme_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = currentThemeText,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    Text(currentThemeText, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
 
@@ -773,29 +696,14 @@ fun HomeScreen(
                                     .padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Language,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.Language, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.app_language),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(stringResource(R.string.app_language), style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.app_language_description),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(stringResource(R.string.app_language_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = currentLangText,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    Text(currentLangText, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
 
@@ -807,17 +715,10 @@ fun HomeScreen(
                                     .padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.statistics),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(stringResource(R.string.statistics), style = MaterialTheme.typography.titleMedium)
                                 }
                             }
 
@@ -832,23 +733,12 @@ fun HomeScreen(
                                     .padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Dns,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.Dns, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.advanced_features),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(stringResource(R.string.advanced_features), style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.advanced_features_description),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(stringResource(R.string.advanced_features_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -873,14 +763,12 @@ fun HomeScreen(
 
                                     Spacer(modifier = Modifier.width(8.dp))
 
-                                    // YATAYDA SÜRÜKLENEBİLİR VE SIRALANABİLİR GRUP ÇİPLERİ
                                     LazyRow(
                                         modifier = Modifier.weight(1f),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         contentPadding = PaddingValues(horizontal = 4.dp)
                                     ) {
-                                        // 1. "Tümü / All" Çipi (Sırası Sabit)
                                         item {
                                             val isAllSelected = selectedGroup.isEmpty()
                                             val allLabel = if (hideGroupCounts) {
@@ -902,7 +790,6 @@ fun HomeScreen(
                                             )
                                         }
 
-                                        // 2. Özel Grup Çipleri (Basılı Tutup Yatayda Sırasını Değiştirme)
                                         itemsIndexed(currentGroupsList, key = { _, groupName -> groupName }) { index, groupName ->
                                             val isDragging = (draggedGroupIndex == index)
                                             val isSelected = selectedGroup.equals(groupName, ignoreCase = true)
@@ -985,7 +872,6 @@ fun HomeScreen(
                                             }
                                         }
 
-                                        // 3. Yeni Grup Ekle Butonu (+)
                                         item {
                                             IconButton(
                                                 onClick = { showAddGroupDialog = true },
@@ -1019,7 +905,6 @@ fun HomeScreen(
                                             }
                                         }
                                     ) {
-                                        // Şimşek yerine uygulamanın kendi güç/foreground logosu:
                                         Icon(
                                             painter = painterResource(id = R.drawable.ic_launcher_foreground),
                                             contentDescription = stringResource(R.string.wake_all_in_group),
@@ -1229,6 +1114,9 @@ fun HomeScreen(
                                                         viewModel.refreshDeviceStatus(context, device)
                                                     }
                                                 },
+                                                onSendShutdown = {
+                                                    deviceToShutdown = device
+                                                },
                                                 onChangeGroupRequest = { deviceToChangeGroup = device },
                                                 onEditRequest = { deviceToEdit = device },
                                                 onScheduleRequest = { deviceToSchedule = device },
@@ -1248,8 +1136,8 @@ fun HomeScreen(
                             existingGroups = allGroups,
                             defaultGroup = selectedGroup,
                             onDismiss = { showAddDialog = false },
-                            onConfirm = { name, mac, ip, localIp, port, secureOn, group ->
-                                viewModel.addDevice(name, mac, ip, localIp, port, secureOn, group)
+                            onConfirm = { name, mac, ip, localIp, port, secureOn, group, sType, sPort, sUser, sPass, sCmd, sUrl ->
+                                viewModel.addDevice(name, mac, ip, localIp, port, secureOn, group, sType, sPort, sUser, sPass, sCmd, sUrl)
                                 showAddDialog = false
                             }
                         )
@@ -1262,7 +1150,7 @@ fun HomeScreen(
                             existingGroups = allGroups,
                             defaultGroup = device.groupName,
                             onDismiss = { deviceToEdit = null },
-                            onConfirm = { name, mac, ip, localIp, port, secureOn, group ->
+                            onConfirm = { name, mac, ip, localIp, port, secureOn, group, sType, sPort, sUser, sPass, sCmd, sUrl ->
                                 val updatedDevice = device.copy(
                                     name = name,
                                     macAddress = mac,
@@ -1270,7 +1158,13 @@ fun HomeScreen(
                                     localIp = localIp,
                                     port = port,
                                     secureOnPassword = secureOn?.ifBlank { null },
-                                    groupName = group
+                                    groupName = group,
+                                    shutdownType = sType,
+                                    shutdownPort = sPort,
+                                    shutdownUsername = sUser,
+                                    shutdownPassword = sPass,
+                                    shutdownCommand = sCmd,
+                                    shutdownHttpUrl = sUrl
                                 )
                                 viewModel.updateDevice(updatedDevice)
                                 deviceToEdit = null
@@ -1278,7 +1172,46 @@ fun HomeScreen(
                         )
                     }
 
-                    // Grup Özelleştirme Diyaloğu (Sayıları Gizleme & Toplu Uyandırma Butonu)
+                    deviceToShutdown?.let { dev ->
+                        AlertDialog(
+                            onDismissRequest = { deviceToShutdown = null },
+                            title = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.PowerSettingsNew, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.shutdown_confirm_title))
+                                }
+                            },
+                            text = {
+                                Text(stringResource(R.string.shutdown_confirm_desc, dev.name))
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        val target = dev
+                                        deviceToShutdown = null
+                                        viewModel.sendShutdown(target) { success, msg ->
+                                            val text = if (success) {
+                                                context.getString(R.string.shutdown_success, target.name)
+                                            } else {
+                                                context.getString(R.string.shutdown_error, msg ?: "")
+                                            }
+                                            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                                            viewModel.refreshDeviceStatus(context, target)
+                                        }
+                                    }
+                                ) {
+                                    Text(stringResource(R.string.shutdown), color = MaterialTheme.colorScheme.error)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { deviceToShutdown = null }) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                            }
+                        )
+                    }
+
                     if (showGroupCustomizationDialog) {
                         GroupCustomizationDialog(
                             hideGroupCounts = hideGroupCounts,
@@ -1293,7 +1226,6 @@ fun HomeScreen(
                         )
                     }
 
-                    // Toplu Uyandırma Onay Diyaloğu
                     if (showWakeAllConfirmDialog) {
                         val targetDevices = remember(devices, selectedGroup) {
                             if (selectedGroup.isBlank()) {
@@ -1347,7 +1279,6 @@ fun HomeScreen(
                         )
                     }
 
-                    // Grup Ekleme Diyaloğu
                     if (showAddGroupDialog) {
                         var newGroupName by remember { mutableStateOf("") }
                         AlertDialog(
@@ -1392,7 +1323,6 @@ fun HomeScreen(
                         )
                     }
 
-                    // Grup Yönetimi (Yeniden Adlandır / Sil)
                     groupToManage?.let { groupName ->
                         var showRenameDialog by remember { mutableStateOf(false) }
                         var showDeleteDialog by remember { mutableStateOf(false) }
@@ -1508,7 +1438,6 @@ fun HomeScreen(
                         }
                     }
 
-                    // Cihaz Grubu Değiştirme Diyaloğu
                     deviceToChangeGroup?.let { device ->
                         var selectedGroupName by remember { mutableStateOf(device.groupName) }
 
@@ -1689,262 +1618,6 @@ fun HomeScreen(
 }
 
 @Composable
-fun GroupCustomizationDialog(
-    hideGroupCounts: Boolean,
-    showBatchWakeButton: Boolean,
-    onDismiss: () -> Unit,
-    onToggleHideCounts: (Boolean) -> Unit,
-    onToggleShowBatchWakeButton: (Boolean) -> Unit
-) {
-    var hideCountsState by remember { mutableStateOf(hideGroupCounts) }
-    var showBatchWakeState by remember { mutableStateOf(showBatchWakeButton) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.group_customization), style = MaterialTheme.typography.titleLarge)
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.hide_group_counts),
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(R.string.hide_group_counts_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Switch(
-                        checked = hideCountsState,
-                        onCheckedChange = {
-                            hideCountsState = it
-                            onToggleHideCounts(it)
-                        }
-                    )
-                }
-
-                HorizontalDivider()
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.show_batch_wake_button),
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(R.string.show_batch_wake_button_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Switch(
-                        checked = showBatchWakeState,
-                        onCheckedChange = {
-                            showBatchWakeState = it
-                            onToggleShowBatchWakeButton(it)
-                        }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.ok))
-            }
-        }
-    )
-}
-
-@Composable
-fun LanguageSelectionDialog(
-    currentLangTag: String,
-    onDismiss: () -> Unit,
-    onLanguageSelected: (String) -> Unit
-) {
-    val options = listOf(
-        "" to stringResource(R.string.system_default),
-        "tr" to stringResource(R.string.turkish),
-        "en" to stringResource(R.string.english)
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.select_language)) },
-        text = {
-            Column {
-                options.forEach { (tag, label) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(
-                                selected = (currentLangTag == tag),
-                                onClick = { onLanguageSelected(tag) }
-                            )
-                            .padding(vertical = 12.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = (currentLangTag == tag),
-                            onClick = { onLanguageSelected(tag) }
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(text = label, style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        }
-    )
-}
-
-@Composable
-fun CardCustomizationDialog(
-    currentMac: String,
-    currentLocalIp: String,
-    currentWanIp: String,
-    currentPort: String,
-    onDismiss: () -> Unit,
-    onSave: (String, String, String, String) -> Unit
-) {
-    var macOpt by remember { mutableStateOf(currentMac) }
-    var localIpOpt by remember { mutableStateOf(currentLocalIp) }
-    var wanIpOpt by remember { mutableStateOf(currentWanIp) }
-    var portOpt by remember { mutableStateOf(currentPort) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.card_customization), style = MaterialTheme.typography.titleLarge)
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 420.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                CustomizationRow(
-                    label = stringResource(R.string.field_mac_address),
-                    selectedOption = macOpt,
-                    onOptionSelected = { macOpt = it }
-                )
-                CustomizationRow(
-                    label = stringResource(R.string.field_local_ip),
-                    selectedOption = localIpOpt,
-                    onOptionSelected = { localIpOpt = it }
-                )
-                CustomizationRow(
-                    label = stringResource(R.string.field_wan_address),
-                    selectedOption = wanIpOpt,
-                    onOptionSelected = { wanIpOpt = it }
-                )
-                CustomizationRow(
-                    label = stringResource(R.string.field_port),
-                    selectedOption = portOpt,
-                    onOptionSelected = { portOpt = it }
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(macOpt, localIpOpt, wanIpOpt, portOpt) }) {
-                Text(stringResource(R.string.save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        }
-    )
-}
-
-@Composable
-fun CustomizationRow(
-    label: String,
-    selectedOption: String,
-    onOptionSelected: (String) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            FilterChip(
-                selected = selectedOption == "show",
-                onClick = { onOptionSelected("show") },
-                label = { Text(stringResource(R.string.display_show), style = MaterialTheme.typography.labelSmall) },
-                modifier = Modifier.weight(1f)
-            )
-            FilterChip(
-                selected = selectedOption == "mask",
-                onClick = { onOptionSelected("mask") },
-                label = { Text(stringResource(R.string.display_mask), style = MaterialTheme.typography.labelSmall) },
-                modifier = Modifier.weight(1f)
-            )
-            FilterChip(
-                selected = selectedOption == "hide",
-                onClick = { onOptionSelected("hide") },
-                label = { Text(stringResource(R.string.display_hide), style = MaterialTheme.typography.labelSmall) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-fun maskMac(mac: String): String {
-    if (mac.length < 5) return "••••••••••••"
-    return "${mac.take(5)}:••:••:••"
-}
-
-fun maskIp(ip: String): String {
-    val parts = ip.split(".")
-    if (parts.size == 4) {
-        return "${parts[0]}.${parts[1]}.***.***"
-    }
-    return "***.***.***.***"
-}
-
-fun maskWan(wan: String): String {
-    if (wan.contains(".")) {
-        val domain = wan.substringAfterLast(".", "")
-        return "*****.***.$domain"
-    }
-    return "********"
-}
-
-@Composable
 fun DeviceItemCard(
     device: DeviceEntity,
     status: DeviceStatus,
@@ -1955,12 +1628,14 @@ fun DeviceItemCard(
     portDisplay: String,
     onRefreshStatus: () -> Unit,
     onSendWol: () -> Unit,
+    onSendShutdown: () -> Unit,
     onChangeGroupRequest: () -> Unit,
     onEditRequest: () -> Unit,
     onScheduleRequest: () -> Unit,
     onDeleteRequest: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val isShutdownConfigured = device.shutdownType != "NONE"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -2125,18 +1800,56 @@ fun DeviceItemCard(
                 }
             }
 
-            Button(
-                onClick = onSendWol,
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraLarge
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PowerSettingsNew,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(R.string.wake_up))
+            if (isShutdownConfigured) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onSendWol,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.extraLarge
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PowerSettingsNew,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = stringResource(R.string.wake_up))
+                    }
+
+                    OutlinedButton(
+                        onClick = onSendShutdown,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PowerOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = stringResource(R.string.shutdown))
+                    }
+                }
+            } else {
+                Button(
+                    onClick = onSendWol,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PowerSettingsNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = stringResource(R.string.wake_up))
+                }
             }
         }
     }
@@ -2535,7 +2248,7 @@ fun AdvancedFeaturesScreen(
                 }
             }
 
-            // 2. TEK VE BİRLEŞİK HIZLI AYARLAR KARTI
+            // 2. HIZLI AYARLAR KARTI
             item {
                 Card(
                     modifier = Modifier
@@ -2683,7 +2396,7 @@ fun AdvancedFeaturesScreen(
                 }
             }
 
-            // 6. HARİCİ OTOMASYON (TASKER/MACRODROID)
+            // 6. HARİCİ OTOMASYON
             item {
                 Card(
                     modifier = Modifier
@@ -2811,7 +2524,6 @@ fun AdvancedFeaturesScreen(
         }
     }
 
-    // BİRLEŞİK HIZLI AYARLAR YÖNETİM DİYALOĞU
     if (showTileManagementDialog) {
         var isTileLockEnabledInDialog by remember {
             mutableStateOf(prefs.getBoolean("lock_tile_enabled", false))
@@ -2869,7 +2581,6 @@ fun AdvancedFeaturesScreen(
 
                     HorizontalDivider()
 
-                    // Hızlı Ayar Butonunu Kilitleme Anahtarı (PIN Menüsü ile Tam Senkronize)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -5418,9 +5129,9 @@ fun getAppVersionAndRecommendation(context: Context): Pair<String, String> {
         } else {
             context.packageManager.getPackageInfo(context.packageName, 0)
         }
-        pInfo.versionName ?: "2.1.0"
+        pInfo.versionName ?: "2.2.0"
     } catch (_: Exception) {
-        "2.1.0"
+        "2.2.0"
     }
 
     val rawArch = detectApkArchitecture(context)
@@ -5433,7 +5144,6 @@ fun getAppVersionAndRecommendation(context: Context): Pair<String, String> {
         else -> rawArch
     }
 
-    // Cihazın BİRİNCİL (ana donanım) mimarisi ARM64 mü?
     val primaryAbi = if (Build.SUPPORTED_ABIS.isNotEmpty()) Build.SUPPORTED_ABIS[0].lowercase() else ""
     val isNativeArm64Device = primaryAbi.contains("arm64")
     val isNotArm64Build = rawArch != "arm64-v8a"
@@ -5506,7 +5216,7 @@ fun AddOrEditDeviceDialog(
     existingGroups: List<String> = emptyList(),
     defaultGroup: String = "",
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, String, Int, String?, String) -> Unit
+    onConfirm: (String, String, String, String, Int, String?, String, String, Int, String, String, String, String) -> Unit
 ) {
     var name by remember { mutableStateOf(deviceToEdit?.name ?: "") }
     var mac by remember { mutableStateOf(deviceToEdit?.macAddress ?: "") }
@@ -5516,51 +5226,71 @@ fun AddOrEditDeviceDialog(
     var secureOn by remember { mutableStateOf(deviceToEdit?.secureOnPassword ?: "") }
     var groupName by remember { mutableStateOf(deviceToEdit?.groupName ?: defaultGroup) }
 
+    var shutdownType by remember { mutableStateOf(deviceToEdit?.shutdownType ?: "NONE") }
+    var shutdownPortText by remember { mutableStateOf(deviceToEdit?.shutdownPort?.toString() ?: "22") }
+    var shutdownUsername by remember { mutableStateOf(deviceToEdit?.shutdownUsername ?: "") }
+    var shutdownPassword by remember { mutableStateOf(deviceToEdit?.shutdownPassword ?: "") }
+    var shutdownCommand by remember { mutableStateOf(deviceToEdit?.shutdownCommand ?: "shutdown /s /f /t 0") }
+    var shutdownHttpUrl by remember { mutableStateOf(deviceToEdit?.shutdownHttpUrl ?: "") }
+
+    // Şifre Göster / Gizle State'i
+    var isPasswordVisible by remember { mutableStateOf(false) }
+
     var showScanSheet by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (deviceToEdit == null) stringResource(R.string.add_device) else stringResource(R.string.edit_device)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.device_name)) },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = mac,
                     onValueChange = { mac = it },
                     label = { Text(stringResource(R.string.mac_address)) },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = ip,
                     onValueChange = { ip = it },
                     label = { Text(stringResource(R.string.wan_ddns_address)) },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = localIp,
                     onValueChange = { localIp = it },
                     label = { Text(stringResource(R.string.local_ip_address)) },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = portText,
                     onValueChange = { portText = it },
                     label = { Text(stringResource(R.string.port_default)) },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = secureOn,
                     onValueChange = { secureOn = it },
                     label = { Text(stringResource(R.string.secureon_password)) },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                // Grup Alanı ve Hızlı Seçim Çipleri
                 OutlinedTextField(
                     value = groupName,
                     onValueChange = { groupName = it },
@@ -5569,7 +5299,8 @@ fun AddOrEditDeviceDialog(
                     leadingIcon = {
                         Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 if (existingGroups.isNotEmpty()) {
@@ -5587,6 +5318,137 @@ fun AddOrEditDeviceDialog(
                             )
                         }
                     }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                Text(
+                    text = stringResource(R.string.shutdown_method),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    FilterChip(
+                        selected = shutdownType == "NONE",
+                        onClick = { shutdownType = "NONE" },
+                        label = { Text(stringResource(R.string.shutdown_method_none), style = MaterialTheme.typography.labelSmall) }
+                    )
+                    FilterChip(
+                        selected = shutdownType == "SSH",
+                        onClick = { shutdownType = "SSH" },
+                        label = { Text(stringResource(R.string.shutdown_method_ssh), style = MaterialTheme.typography.labelSmall) }
+                    )
+                    FilterChip(
+                        selected = shutdownType == "HTTP_GET",
+                        onClick = { shutdownType = "HTTP_GET" },
+                        label = { Text(stringResource(R.string.shutdown_method_http_get), style = MaterialTheme.typography.labelSmall) }
+                    )
+                    FilterChip(
+                        selected = shutdownType == "HTTP_POST",
+                        onClick = { shutdownType = "HTTP_POST" },
+                        label = { Text(stringResource(R.string.shutdown_method_http_post), style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+
+                if (shutdownType == "SSH") {
+                    OutlinedTextField(
+                        value = shutdownUsername,
+                        onValueChange = { shutdownUsername = it },
+                        label = { Text(stringResource(R.string.shutdown_username)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // ŞİFRE GÖSTER / GİZLE (GÖZ İKONLU)
+                    OutlinedTextField(
+                        value = shutdownPassword,
+                        onValueChange = { shutdownPassword = it },
+                        label = { Text(stringResource(R.string.shutdown_password)) },
+                        singleLine = true,
+                        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                            IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                                Icon(
+                                    imageVector = image,
+                                    contentDescription = if (isPasswordVisible) "Şifreyi Gizle" else "Şifreyi Göster"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = shutdownPortText,
+                        onValueChange = { shutdownPortText = it },
+                        label = { Text(stringResource(R.string.shutdown_port)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = shutdownCommand,
+                        onValueChange = { shutdownCommand = it },
+                        label = { Text(stringResource(R.string.shutdown_command)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        SuggestionChip(
+                            onClick = { shutdownCommand = "shutdown /s /f /t 0" },
+                            label = { Text(stringResource(R.string.preset_windows), style = MaterialTheme.typography.labelSmall) }
+                        )
+                        SuggestionChip(
+                            onClick = { shutdownCommand = "systemctl poweroff" },
+                            label = { Text(stringResource(R.string.preset_linux), style = MaterialTheme.typography.labelSmall) }
+                        )
+                    }
+                } else if (shutdownType == "HTTP_GET" || shutdownType == "HTTP_POST") {
+                    OutlinedTextField(
+                        value = shutdownHttpUrl,
+                        onValueChange = { shutdownHttpUrl = it },
+                        label = { Text(stringResource(R.string.shutdown_url)) },
+                        placeholder = { Text("http://192.168.1.100:8080/shutdown") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = shutdownUsername,
+                        onValueChange = { shutdownUsername = it },
+                        label = { Text("${stringResource(R.string.shutdown_username)} (Opsiyonel)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = shutdownPassword,
+                        onValueChange = { shutdownPassword = it },
+                        label = { Text("${stringResource(R.string.shutdown_password)} (Opsiyonel)") },
+                        singleLine = true,
+                        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                            IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                                Icon(
+                                    imageVector = image,
+                                    contentDescription = if (isPasswordVisible) "Şifreyi Gizle" else "Şifreyi Göster"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         },
@@ -5612,7 +5474,11 @@ fun AddOrEditDeviceDialog(
                         onClick = {
                             if (name.isNotBlank() && mac.isNotBlank()) {
                                 val port = portText.toIntOrNull() ?: 9
-                                onConfirm(name, mac, ip, localIp, port, secureOn.ifBlank { null }, groupName.trim())
+                                val sPort = shutdownPortText.toIntOrNull() ?: 22
+                                onConfirm(
+                                    name, mac, ip, localIp, port, secureOn.ifBlank { null }, groupName.trim(),
+                                    shutdownType, sPort, shutdownUsername, shutdownPassword, shutdownCommand, shutdownHttpUrl
+                                )
                             }
                         }
                     ) {
@@ -5747,6 +5613,262 @@ fun ScanNetworkBottomSheet(
             }
         }
     }
+}
+
+@Composable
+fun GroupCustomizationDialog(
+    hideGroupCounts: Boolean,
+    showBatchWakeButton: Boolean,
+    onDismiss: () -> Unit,
+    onToggleHideCounts: (Boolean) -> Unit,
+    onToggleShowBatchWakeButton: (Boolean) -> Unit
+) {
+    var hideCountsState by remember { mutableStateOf(hideGroupCounts) }
+    var showBatchWakeState by remember { mutableStateOf(showBatchWakeButton) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.group_customization), style = MaterialTheme.typography.titleLarge)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.hide_group_counts),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(R.string.hide_group_counts_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = hideCountsState,
+                        onCheckedChange = {
+                            hideCountsState = it
+                            onToggleHideCounts(it)
+                        }
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.show_batch_wake_button),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(R.string.show_batch_wake_button_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = showBatchWakeState,
+                        onCheckedChange = {
+                            showBatchWakeState = it
+                            onToggleShowBatchWakeButton(it)
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.ok))
+            }
+        }
+    )
+}
+
+@Composable
+fun LanguageSelectionDialog(
+    currentLangTag: String,
+    onDismiss: () -> Unit,
+    onLanguageSelected: (String) -> Unit
+) {
+    val options = listOf(
+        "" to stringResource(R.string.system_default),
+        "tr" to stringResource(R.string.turkish),
+        "en" to stringResource(R.string.english)
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.select_language)) },
+        text = {
+            Column {
+                options.forEach { (tag, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = (currentLangTag == tag),
+                                onClick = { onLanguageSelected(tag) }
+                            )
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (currentLangTag == tag),
+                            onClick = { onLanguageSelected(tag) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+fun CardCustomizationDialog(
+    currentMac: String,
+    currentLocalIp: String,
+    currentWanIp: String,
+    currentPort: String,
+    onDismiss: () -> Unit,
+    onSave: (String, String, String, String) -> Unit
+) {
+    var macOpt by remember { mutableStateOf(currentMac) }
+    var localIpOpt by remember { mutableStateOf(currentLocalIp) }
+    var wanIpOpt by remember { mutableStateOf(currentWanIp) }
+    var portOpt by remember { mutableStateOf(currentPort) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.card_customization), style = MaterialTheme.typography.titleLarge)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                CustomizationRow(
+                    label = stringResource(R.string.field_mac_address),
+                    selectedOption = macOpt,
+                    onOptionSelected = { macOpt = it }
+                )
+                CustomizationRow(
+                    label = stringResource(R.string.field_local_ip),
+                    selectedOption = localIpOpt,
+                    onOptionSelected = { localIpOpt = it }
+                )
+                CustomizationRow(
+                    label = stringResource(R.string.field_wan_address),
+                    selectedOption = wanIpOpt,
+                    onOptionSelected = { wanIpOpt = it }
+                )
+                CustomizationRow(
+                    label = stringResource(R.string.field_port),
+                    selectedOption = portOpt,
+                    onOptionSelected = { portOpt = it }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(macOpt, localIpOpt, wanIpOpt, portOpt) }) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+fun CustomizationRow(
+    label: String,
+    selectedOption: String,
+    onOptionSelected: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(text = label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            FilterChip(
+                selected = selectedOption == "show",
+                onClick = { onOptionSelected("show") },
+                label = { Text(stringResource(R.string.display_show), style = MaterialTheme.typography.labelSmall) },
+                modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+                selected = selectedOption == "mask",
+                onClick = { onOptionSelected("mask") },
+                label = { Text(stringResource(R.string.display_mask), style = MaterialTheme.typography.labelSmall) },
+                modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+                selected = selectedOption == "hide",
+                onClick = { onOptionSelected("hide") },
+                label = { Text(stringResource(R.string.display_hide), style = MaterialTheme.typography.labelSmall) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+fun maskMac(mac: String): String {
+    if (mac.length < 5) return "••••••••••••"
+    return "${mac.take(5)}:••:••:••"
+}
+
+fun maskIp(ip: String): String {
+    val parts = ip.split(".")
+    if (parts.size == 4) {
+        return "${parts[0]}.${parts[1]}.***.***"
+    }
+    return "***.***.***.***"
+}
+
+fun maskWan(wan: String): String {
+    if (wan.contains(".")) {
+        val domain = wan.substringAfterLast(".", "")
+        return "*****.***.$domain"
+    }
+    return "********"
 }
 
 @Composable

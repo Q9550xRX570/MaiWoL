@@ -1,17 +1,22 @@
-MaiWoL is a modern, enterprise-grade, lightweight, and 100% Free and Open Source (FOSS) Wake-on-LAN suite for Android.
+MaiWoL is a modern, enterprise-grade, lightweight, and 100% Free and Open Source (FOSS) Wake-on-LAN and Remote Power Management suite for Android.
 
-Major Features in v2.0.0:
-• LAN Broadcast and WAN/DDNS Magic Packet dispatch with burst pacing
+Major Features in v2.2.0:
+• Remote Shutdown Engine: Native OpenSSH terminal execution & HTTP Webhook (GET/POST) support for one-tap remote computer shutdown and locking
+• Forced Instant Halting: Integrated /f parameter ensuring guaranteed instant shutdown without hanging on unresponsive applications
+• Seamless LAN/WAN Dual-Routing: Auto-switches between local subnet on home Wi-Fi and port-forwarded WAN/DDNS endpoints on mobile data
+• Credential Visibility Toggle: Eye toggle for verifying masked SSH and Webhook passwords
+• Interactive Group Tabs: Reorderable group tabs with drag-and-drop customization and optional count badge hiding
+• One-Tap Batch Group Wake: Trigger Magic Packets to all machines in a category with stepped 80ms concurrency pacing
+• LAN Broadcast and WAN/DDNS Magic Packet dispatch with burst pacing (1-20 packets)
 • Enterprise SecureOn 6-byte password injection
-• 2x1 Card & 1x1 Quick Wake Home Screen Widgets (with lock protection)
+• 2x1 Card & 1x1 Quick Wake Home Screen Widgets (with optional PIN/Biometric lock)
 • Quick Settings Notification Shade Tile for instant device wake-ups
 • Dynamic App Launcher Shortcuts
-• AES-256 Encrypted & Plain Backup / Restore (.maiwol)
-• Precision Date/Time & Weekly Recurring Scheduling
-• External automation support (Tasker / MacroDroid / ADB intents)
+• AES-256 Encrypted & Plain Backup / Restore (.maiwol v3) with shutdown profiles
 • Multi-tier real-time status polling via ICMP & OS core ports (SMB, RPC, RDP, SSH)
-• Card privacy customization (Show / Mask / Hide)
 • Cryptographic SHA-256 PIN & Biometric App Lock with FLAG_SECURE protection
 • Shizuku / ADB integration for rootless MAC discovery
+• Precision Date/Time & Weekly Recurring Scheduling
+• Headless External automation (Tasker / MacroDroid / ADB intents)
 • Built-in DNS Resolver and Ping Latency Diagnostic Tools
-• 100% FOSS with zero trackers and zero telemetry.
+• 100% FOSS with zero trackers, zero telemetry, and zero advertisements.
