@@ -23,9 +23,9 @@ data class ScannedDevice(
 
 enum class DeviceStatus {
     CHECKING,
-    ONLINE,      // Bilgisayar açık (Ping veya TCP servis portu yanıt veriyor)
-    STANDBY,     // Bilgisayar kapalı AMA ağ yolu açık, Magic Packet kesinlikle ulaşabilir
-    UNREACHABLE  // Bağlantı yok (farklı ağda / DNS çözülemiyor / modem kapalı)
+    ONLINE,
+    STANDBY,
+    UNREACHABLE
 }
 
 object NetworkScanner {
@@ -84,7 +84,6 @@ object NetworkScanner {
                 method.isAccessible = true
                 method.invoke(null, cmd, null, null) as? Process
             } catch (e: Exception) {
-                e.printStackTrace()
                 null
             } ?: return emptyMap()
 
@@ -102,15 +101,13 @@ object NetworkScanner {
                 }
             }
             process.waitFor()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (_: Exception) {}
         return arpMap
     }
 
     private fun isHostReachable(ip: String, ports: List<Int>): Boolean {
         try {
-            val process = Runtime.getRuntime().exec("ping -c 1 -w 1 $ip")
+            val process = Runtime.getRuntime().exec("ping -c 1 -W 1 -w 1 $ip")
             val exitCode = process.waitFor()
             if (exitCode == 0) return true
         } catch (_: Exception) {}
@@ -161,89 +158,146 @@ object NetworkScanner {
 object DeviceStatusChecker {
 
     suspend fun checkStatus(context: Context, device: DeviceEntity): DeviceStatus = withContext(Dispatchers.IO) {
-        val localIp = device.localIp.trim()
-        val wanAddress = device.ipAddress.trim()
+        val rawLocalIp = device.localIp.trim()
+        val rawWanAddress = device.ipAddress.trim()
         val targetPort = device.port
+        val shutdownPort = device.shutdownPort
+        val shutdownType = device.shutdownType
 
-        // İşletim sisteminin açık olduğunu gösteren standart TCP servis portları
-        // 80 (modem/router web arayüzü), 9 ve 7 (WoL UDP) gibi portlar elenir
-        val osServicePorts = mutableListOf(445, 135, 139, 5357, 3389, 22)
-        if (targetPort !in listOf(7, 9, 80, 443) && targetPort in 1..65535) {
-            osServicePorts.add(0, targetPort)
+        val effectiveLocalIp = when {
+            rawLocalIp.isNotBlank() && !isBroadcastAddress(rawLocalIp) -> rawLocalIp
+            rawWanAddress.isNotBlank() && isPrivateIp(rawWanAddress) && !isBroadcastAddress(rawWanAddress) -> rawWanAddress
+            else -> ""
         }
 
-        // 1. AÇIK MI? (Cihazın yerel IP'sine ICMP ping veya OS servis port kontrolü)
-        if (localIp.isNotBlank()) {
-            if (pingHostAccurate(localIp) || isAnyPortOpen(localIp, osServicePorts)) {
-                return@withContext DeviceStatus.ONLINE
-            }
+        val effectiveWanAddress = when {
+            rawWanAddress.isNotBlank() && !isPrivateIp(rawWanAddress) && !isBroadcastAddress(rawWanAddress) -> rawWanAddress
+            else -> ""
         }
 
-        // Kullanıcı yerel ağda değilse ve WAN üzerinden cihaz için özel yönlendirilmiş bir port varsa (RDP/SSH vs.)
-        if (wanAddress.isNotBlank() && targetPort !in listOf(7, 9, 80, 443) && targetPort in 1..65535) {
-            if (isAnyPortOpen(wanAddress, listOf(targetPort, 3389, 22))) {
-                return@withContext DeviceStatus.ONLINE
-            }
-        }
-
-        // 2. KAPALI MI? (İşletim sistemi kapalı AMA Magic Packet alabilmesi için ağ yolu hazır)
         val phoneLocalIp = NetworkScanner.getLocalIpAddress(context)
-        if (!phoneLocalIp.isNullOrBlank() && localIp.isNotBlank()) {
+        val isPhoneOnLocalWifi = !phoneLocalIp.isNullOrBlank() && isPrivateIp(phoneLocalIp)
+
+        val isPhoneOnSameSubnet = if (isPhoneOnLocalWifi && effectiveLocalIp.isNotBlank()) {
             val phoneSubnet = phoneLocalIp.substringBeforeLast(".")
-            val deviceSubnet = localIp.substringBeforeLast(".")
-            if (phoneSubnet == deviceSubnet) {
-                // Telefon ve bilgisayar aynı yerel Wi-Fi alt ağında -> Cihaz kapalı ama WoL hazır
-                return@withContext DeviceStatus.STANDBY
+            val deviceSubnet = effectiveLocalIp.substringBeforeLast(".")
+            phoneSubnet == deviceSubnet
+        } else {
+            false
+        }
+
+        if (effectiveLocalIp.isNotBlank()) {
+            val localOsServicePorts = mutableListOf(445, 135, 139, 3389, 5357)
+            if (shutdownType.equals("SSH", ignoreCase = true) && shutdownPort in 1..65535) {
+                localOsServicePorts.add(0, shutdownPort)
+            } else if (shutdownPort !in listOf(7, 9, 80, 443) && shutdownPort in 1..65535) {
+                localOsServicePorts.add(0, shutdownPort)
+            }
+            if (targetPort !in listOf(7, 9, 80, 443) && targetPort in 1..65535 && !localOsServicePorts.contains(targetPort)) {
+                localOsServicePorts.add(0, targetPort)
+            }
+
+            if (pingHostAccurate(effectiveLocalIp) || isAnyPortOpen(effectiveLocalIp, localOsServicePorts, 250)) {
+                return@withContext DeviceStatus.ONLINE
             }
         }
 
-        if (wanAddress.isNotBlank()) {
+        if (!isPhoneOnSameSubnet && effectiveWanAddress.isNotBlank()) {
+            val specificWanPorts = mutableListOf<Int>()
+            if (shutdownType.equals("SSH", ignoreCase = true) && shutdownPort in 1..65535) {
+                specificWanPorts.add(shutdownPort)
+            }
+            if (targetPort !in listOf(7, 9, 80, 443) && targetPort in 1..65535 && !specificWanPorts.contains(targetPort)) {
+                specificWanPorts.add(targetPort)
+            }
+
+            if (specificWanPorts.isNotEmpty()) {
+                if (isAnyPortOpen(effectiveWanAddress, specificWanPorts, 350)) {
+                    return@withContext DeviceStatus.ONLINE
+                }
+            }
+        }
+
+        if (isPhoneOnSameSubnet) {
+            return@withContext DeviceStatus.STANDBY
+        }
+
+        if (effectiveWanAddress.isNotBlank()) {
             try {
-                val address = InetAddress.getByName(wanAddress)
-                if (address != null && !address.isLoopbackAddress) {
-                    // WAN/DDNS adresi çözümlenebiliyor -> İnternet üzerinden WoL hazır
+                val address = InetAddress.getByName(effectiveWanAddress)
+                if (address != null && !address.isLoopbackAddress && !address.isAnyLocalAddress) {
                     return@withContext DeviceStatus.STANDBY
                 }
             } catch (_: Exception) {}
         }
 
-        // 3. ULAŞILAMADI (Farklı ağda / DNS çözülemiyor / bağlantı yok)
         return@withContext DeviceStatus.UNREACHABLE
     }
 
     private fun pingHostAccurate(host: String): Boolean {
+        if (host.isBlank() || isBroadcastAddress(host)) return false
         return try {
-            val process = Runtime.getRuntime().exec("ping -c 1 -w 1 $host")
+            val process = Runtime.getRuntime().exec("ping -c 1 -W 1 -w 1 $host")
             val reader = BufferedReader(InputStreamReader(process.inputStream))
-            var hasValidReply = false
+            var hasTargetReply = false
+            var hasPacketLoss = false
+            val cleanHost = host.lowercase()
+
             var line: String?
             while (reader.readLine().also { line = it } != null) {
-                val lower = line?.lowercase() ?: ""
-                // Router'ın "Destination Host Unreachable" veya %100 paket kaybı sahte yanıtlarını ele
-                if (lower.contains("unreachable") || lower.contains("100% packet loss") || lower.contains("100% loss")) {
-                    hasValidReply = false
+                val l = line?.lowercase() ?: continue
+                if (l.contains("unreachable") || l.contains("100% packet loss") || l.contains("100% loss") ||
+                    l.contains("0 packets received") || l.contains("0 received") || l.contains("time to live exceeded") ||
+                    l.contains("host down") || l.contains("network is unreachable")) {
+                    hasPacketLoss = true
                     break
                 }
-                if (lower.contains("ttl=") || lower.contains("1 received") || lower.contains("1 packets received") || lower.contains("bytes from $host")) {
-                    hasValidReply = true
+                if (l.contains("bytes from") && l.contains(cleanHost) && l.contains("ttl=")) {
+                    hasTargetReply = true
                 }
             }
             val exitCode = process.waitFor()
-            exitCode == 0 && hasValidReply
+            exitCode == 0 && hasTargetReply && !hasPacketLoss
         } catch (_: Exception) {
             false
         }
     }
 
-    private fun isAnyPortOpen(host: String, ports: List<Int>): Boolean {
-        for (port in ports) {
-            try {
-                Socket().use { socket ->
-                    socket.connect(InetSocketAddress(host, port), 200)
-                    return true
+    private suspend fun isAnyPortOpen(host: String, ports: List<Int>, timeoutMs: Int = 250): Boolean = withContext(Dispatchers.IO) {
+        if (host.isBlank() || isBroadcastAddress(host) || ports.isEmpty()) return@withContext false
+        val validPorts = ports.filter { it in 1..65535 }.distinct()
+        if (validPorts.isEmpty()) return@withContext false
+
+        val jobs = validPorts.map { port ->
+            async {
+                try {
+                    Socket().use { socket ->
+                        socket.connect(InetSocketAddress(host, port), timeoutMs)
+                        true
+                    }
+                } catch (_: Exception) {
+                    false
                 }
-            } catch (_: Exception) {}
+            }
+        }
+        jobs.awaitAll().any { it }
+    }
+
+    private fun isPrivateIp(ip: String): Boolean {
+        val clean = ip.trim()
+        if (clean.startsWith("192.168.") || clean.startsWith("10.") || clean.startsWith("127.")) return true
+        if (clean.startsWith("172.")) {
+            val parts = clean.split(".")
+            if (parts.size >= 2) {
+                val secondOctet = parts[1].toIntOrNull() ?: 0
+                if (secondOctet in 16..31) return true
+            }
         }
         return false
+    }
+
+    private fun isBroadcastAddress(ip: String): Boolean {
+        val clean = ip.trim()
+        return clean.endsWith(".255") || clean == "255.255.255.255"
     }
 }
