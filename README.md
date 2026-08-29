@@ -6,11 +6,11 @@
 
 <p align="center">
   <a href="https://maiwol.com"><img src="https://img.shields.io/badge/Official_Website-maiwol.com-0284C7?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website"></a>
-  <a href="https://github.com/Q9550xRX570/MaiWoL/releases/tag/v2.2.0"><img src="https://img.shields.io/badge/Latest_Release-v2.2.0-38BDF8?style=for-the-badge&logo=github&logoColor=white" alt="Release"></a>
+  <a href="https://github.com/Q9550xRX570/MaiWoL/releases/tag/v2.2.1"><img src="https://img.shields.io/badge/Latest_Release-v2.2.1-38BDF8?style=for-the-badge&logo=github&logoColor=white" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-2563EB?style=for-the-badge&logo=gnu&logoColor=white" alt="License"></a>
   <a href="https://f-droid.org"><img src="https://img.shields.io/badge/F--Droid-100%25_FOSS-34D399?style=for-the-badge&logo=fdroid&logoColor=white" alt="FOSS"></a>
   <a href="https://android.com"><img src="https://img.shields.io/badge/Platform-Android_7.0+-4ADE80?style=for-the-badge&logo=android&logoColor=white" alt="Android"></a>
-  <a href="https://www.virustotal.com/gui/file/a70b98aafcf4b6dbf1f8d458dd9a5118e6532940e94fe20752d0757ac1b35022?nocache=1"><img src="https://img.shields.io/badge/VirusTotal-0%2F68_Clean-10B981?style=for-the-badge&logo=virustotal&logoColor=white" alt="VirusTotal"></a>
+  <a href="https://www.virustotal.com/gui/file/7a474f633df7e75019c153ac2c54bcaac2e7c596e18a4ba0224cb95cbb68cc2f?nocache=1"><img src="https://img.shields.io/badge/VirusTotal-0%2F68_Clean-10B981?style=for-the-badge&logo=virustotal&logoColor=white" alt="VirusTotal"></a>
   <img src="https://img.shields.io/badge/Telemetry-0%25_Zero-EF4444?style=for-the-badge" alt="Zero Telemetry">
 </p>
 
@@ -24,7 +24,7 @@
 
 ## 🌟 Key Features & Architectural Deep-Dive
 
-### ⏻ 1. Secure Remote Shutdown & Power Control *(New in v2.2)*
+### ⏻ 1. Secure Remote Shutdown & Power Control
 - **Native OpenSSH Engine:** Direct terminal command execution over SSH (Windows 10/11 OpenSSH, Linux systemd, macOS, TrueNAS, Proxmox).
 - **HTTP Webhook Integration:** Trigger remote shutdowns, reboots, or smart plug automations via customizable `HTTP GET` or `HTTP POST` endpoints with optional Basic Auth headers.
 - **Forced Instant Halting (`/f` Flag):** Integrated `/f` parameter ensuring guaranteed shutdown without hanging on unresponsive desktop applications or dialogs (`shutdown /s /f /t 0`).
@@ -32,17 +32,17 @@
 - **Credential Visibility Toggle:** Integrated eye button for viewing and verifying masked SSH/HTTP passwords during configuration.
 - **Accidental Trigger Protection:** Tactical confirmation prompts prevent unintended machine shutdowns.
 
-### 📂 2. Device Grouping & Category Management *(v2.1)*
+### 📂 2. Device Grouping & Category Management
 - **Interactive Reorderable Group Tabs:** Organize computers and servers into categories (e.g., *Home, Office, Lab, Racks*). Long-press and drag tabs horizontally to customize order.
 - **Granular Group Customization:** Option to hide device count badges on tabs (e.g., show *Home* instead of *Home (3)*) for a cleaner interface.
 - **Instant Group Reassignment:** Quickly move machines between groups directly from device action menus.
 
-### ⚡ 3. One-Tap Batch Group Wake *(v2.1)*
+### ⚡ 3. One-Tap Batch Group Wake
 - **Simultaneous Group Triggering:** Dedicated top bar action button to wake all computers within the selected group at once.
 - **Paced Dispatch Concurrency:** Automatically sequences Magic Packets across all targets with an 80ms stepped delay to prevent network buffer congestion and packet loss.
 - **Safety Confirmation:** Protective dialogs prevent accidental mass wake-ups.
 
-### 🔍 4. Architecture Inspector & Recommendation Engine *(v2.1)*
+### 🔍 4. Architecture Inspector & Recommendation Engine
 - **Runtime ABI Detection:** Identifies the precise binary architecture running on the device (*ARM64 v8A, Universal, ARMeabi v7A, x86_64*).
 - **Optimization Advisory:** Automatically suggests downloading the architecture-specific APK for optimal performance and smaller memory footprint when running a Universal build on 64-bit silicon.
 
@@ -96,16 +96,16 @@
 
 ---
 
-## 📥 Verified Standalone Downloads & Checksums (v2.2.0)
+## 📥 Verified Standalone Downloads & Checksums (v2.2.1)
 
 Every standalone APK is built in an isolated environment, optimized via R8, and verified through VirusTotal:
 
 | Architecture | Target Device | File | SHA-256 Checksum | VirusTotal Report |
 | :--- | :--- | :--- | :--- | :--- |
-| **ARM64 v8A** | Modern 64-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.0/MaiWoL-v2.2.0-arm64-v8a.apk) | `44572d0deb6fc9c64d0d2b9111c3dfb32be779df5a9e0eddfa77f0503fb3efde` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/44572d0deb6fc9c64d0d2b9111c3dfb32be779df5a9e0eddfa77f0503fb3efde?nocache=1) |
-| **Universal** | All Android Devices | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.0/MaiWoL-v2.2.0-universal.apk) | `a70b98aafcf4b6dbf1f8d458dd9a5118e6532940e94fe20752d0757ac1b35022` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/a70b98aafcf4b6dbf1f8d458dd9a5118e6532940e94fe20752d0757ac1b35022?nocache=1) |
-| **ARMeabi v7A** | Legacy 32-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.0/MaiWoL-v2.2.0-armeabi-v7a.apk) | `dc60f5204ae5e70e3b3821b81dab86d8048e7dc90ed56931a41704ecebc3f1f2` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/dc60f5204ae5e70e3b3821b81dab86d8048e7dc90ed56931a41704ecebc3f1f2?nocache=1) |
-| **x86_64** | Emulators & Android PCs | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.0/MaiWoL-v2.2.0-x86_64.apk) | `b02449cb61a129f9c9cc5f1d13ad677a3a43fbe1377eb8fd325fa911b5420e53` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/b02449cb61a129f9c9cc5f1d13ad677a3a43fbe1377eb8fd325fa911b5420e53?nocache=1) |
+| **ARM64 v8A** | Modern 64-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.1/MaiWoL-v2.2.1-arm64-v8a.apk) | `504fb7e136e120e517804d4bfb6e085caf34d42ccd65842db500f4468cbb1e37` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/504fb7e136e120e517804d4bfb6e085caf34d42ccd65842db500f4468cbb1e37?nocache=1) |
+| **Universal** | All Android Devices | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.1/MaiWoL-v2.2.1-universal.apk) | `7a474f633df7e75019c153ac2c54bcaac2e7c596e18a4ba0224cb95cbb68cc2f` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/7a474f633df7e75019c153ac2c54bcaac2e7c596e18a4ba0224cb95cbb68cc2f?nocache=1) |
+| **ARMeabi v7A** | Legacy 32-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.1/MaiWoL-v2.2.1-armeabi-v7a.apk) | `bc508fae1cadd691e0fa4c58517e087e4c677d4f516f977ff635a3877820e585` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/bc508fae1cadd691e0fa4c58517e087e4c677d4f516f977ff635a3877820e585?nocache=1) |
+| **x86_64** | Emulators & Android PCs | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.1/MaiWoL-v2.2.1-x86_64.apk) | `323f63e7066d7f44171a935299c78ee952ca1f01a60b65ff61a244993096f670` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/323f63e7066d7f44171a935299c78ee952ca1f01a60b65ff61a244993096f670?nocache=1) |
 
 ---
 
