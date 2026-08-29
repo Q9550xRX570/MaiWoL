@@ -6,11 +6,11 @@
 
 <p align="center">
   <a href="https://maiwol.com"><img src="https://img.shields.io/badge/Official_Website-maiwol.com-0284C7?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website"></a>
-  <a href="https://github.com/Q9550xRX570/MaiWoL/releases/tag/v2.2.1"><img src="https://img.shields.io/badge/Latest_Release-v2.2.1-38BDF8?style=for-the-badge&logo=github&logoColor=white" alt="Release"></a>
+  <a href="https://github.com/Q9550xRX570/MaiWoL/releases/tag/v2.2.2"><img src="https://img.shields.io/badge/Latest_Release-v2.2.2-38BDF8?style=for-the-badge&logo=github&logoColor=white" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-2563EB?style=for-the-badge&logo=gnu&logoColor=white" alt="License"></a>
   <a href="https://f-droid.org"><img src="https://img.shields.io/badge/F--Droid-100%25_FOSS-34D399?style=for-the-badge&logo=fdroid&logoColor=white" alt="FOSS"></a>
   <a href="https://android.com"><img src="https://img.shields.io/badge/Platform-Android_7.0+-4ADE80?style=for-the-badge&logo=android&logoColor=white" alt="Android"></a>
-  <a href="https://www.virustotal.com/gui/file/7a474f633df7e75019c153ac2c54bcaac2e7c596e18a4ba0224cb95cbb68cc2f?nocache=1"><img src="https://img.shields.io/badge/VirusTotal-0%2F68_Clean-10B981?style=for-the-badge&logo=virustotal&logoColor=white" alt="VirusTotal"></a>
+  <a href="https://www.virustotal.com/gui/file/a7111adeb8cc1523b664167e7ccfae4b97db3ca88fbbd0a403c0ecd5374102fc?nocache=1"><img src="https://img.shields.io/badge/VirusTotal-0%2F68_Clean-10B981?style=for-the-badge&logo=virustotal&logoColor=white" alt="VirusTotal"></a>
   <img src="https://img.shields.io/badge/Telemetry-0%25_Zero-EF4444?style=for-the-badge" alt="Zero Telemetry">
 </p>
 
@@ -96,16 +96,16 @@
 
 ---
 
-## 📥 Verified Standalone Downloads & Checksums (v2.2.1)
+## 📥 Verified Standalone Downloads & Checksums (v2.2.2)
 
 Every standalone APK is built in an isolated environment, optimized via R8, and verified through VirusTotal:
 
 | Architecture | Target Device | File | SHA-256 Checksum | VirusTotal Report |
 | :--- | :--- | :--- | :--- | :--- |
-| **ARM64 v8A** | Modern 64-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.1/MaiWoL-v2.2.1-arm64-v8a.apk) | `504fb7e136e120e517804d4bfb6e085caf34d42ccd65842db500f4468cbb1e37` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/504fb7e136e120e517804d4bfb6e085caf34d42ccd65842db500f4468cbb1e37?nocache=1) |
-| **Universal** | All Android Devices | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.1/MaiWoL-v2.2.1-universal.apk) | `7a474f633df7e75019c153ac2c54bcaac2e7c596e18a4ba0224cb95cbb68cc2f` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/7a474f633df7e75019c153ac2c54bcaac2e7c596e18a4ba0224cb95cbb68cc2f?nocache=1) |
-| **ARMeabi v7A** | Legacy 32-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.1/MaiWoL-v2.2.1-armeabi-v7a.apk) | `bc508fae1cadd691e0fa4c58517e087e4c677d4f516f977ff635a3877820e585` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/bc508fae1cadd691e0fa4c58517e087e4c677d4f516f977ff635a3877820e585?nocache=1) |
-| **x86_64** | Emulators & Android PCs | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.1/MaiWoL-v2.2.1-x86_64.apk) | `323f63e7066d7f44171a935299c78ee952ca1f01a60b65ff61a244993096f670` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/323f63e7066d7f44171a935299c78ee952ca1f01a60b65ff61a244993096f670?nocache=1) |
+| **ARM64 v8A** | Modern 64-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.2/MaiWoL-v2.2.2-arm64-v8a.apk) | `a1a4733d9e778ddf075c0c3e937eb368f10889d89d057dc5ba01744a24d189b9` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/a1a4733d9e778ddf075c0c3e937eb368f10889d89d057dc5ba01744a24d189b9?nocache=1) |
+| **Universal** | All Android Devices | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.2/MaiWoL-v2.2.2-universal.apk) | `a7111adeb8cc1523b664167e7ccfae4b97db3ca88fbbd0a403c0ecd5374102fc` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/a7111adeb8cc1523b664167e7ccfae4b97db3ca88fbbd0a403c0ecd5374102fc?nocache=1) |
+| **ARMeabi v7A** | Legacy 32-bit Phones | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.2/MaiWoL-v2.2.2-armeabi-v7a.apk) | `a8e61acf6e3a0cf61c8d14a6e9edee29f89a97167600f05d64c80f9f4f63ccf2` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/a8e61acf6e3a0cf61c8d14a6e9edee29f89a97167600f05d64c80f9f4f63ccf2?nocache=1) |
+| **x86_64** | Emulators & Android PCs | [Download](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.2/MaiWoL-v2.2.2-x86_64.apk) | `216e70d4800bda43cc1ca43253bc8d326f2a1dfe2fc30c3b5a4beca42563c612` | [🛡️ 0/68 Clean](https://www.virustotal.com/gui/file/216e70d4800bda43cc1ca43253bc8d326f2a1dfe2fc30c3b5a4beca42563c612?nocache=1) |
 
 ---
 
