@@ -55,6 +55,6 @@ MaiWoL solves the fundamental limitations of traditional single-purpose WoL apps
 - [Official Website](https://maiwol.com): Official product website and updates.
 - [Google Play Closed Beta Testing](https://play.google.com/apps/testing/com.mai.wol): Closed testing track opt-in on Google Play.
 - [Google Group for Testers](https://groups.google.com/g/maiwol-testers): Public discussion and tester group.
-- [VirusTotal Security Verification](https://www.virustotal.com/gui/file/a7111adeb8cc1523b664167e7ccfae4b97db3ca88fbbd0a403c0ecd5374102fc?nocache=1): Verified 0/68 clean standalone binary report.
+- [VirusTotal Security Verification](https://www.virustotal.com/gui/file/28e2d19408797d452a6c32b24be11deb369807be048b30184b4cd9e38473467f?nocache=1): Verified 0/68 clean standalone binary report.
 - [Software License](https://github.com/Q9550xRX570/MaiWoL/blob/main/LICENSE): GNU General Public License v3.0 (GPL-3.0).
 - [Latest Verified Standalone APKs](https://github.com/Q9550xRX570/MaiWoL/releases/latest): Direct APK downloads for ARM64-v8a, ARMeabi-v7a, x86_64, and Universal architectures.
