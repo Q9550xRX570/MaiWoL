@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 @RequiresApi(Build.VERSION_CODES.N)
 class WolTileService : TileService() {
@@ -99,46 +100,48 @@ class WolTileService : TileService() {
                     acquire(4000)
                 }
 
-                val packetCount = prefs.getInt("packet_count", 3)
-                val result = WolManager.sendMagicPacket(
-                    macAddress = targetDevice.macAddress,
-                    ipAddress = targetDevice.ipAddress,
-                    localIp = targetDevice.localIp,
-                    port = targetDevice.port,
-                    secureOnPassword = targetDevice.secureOnPassword,
-                    packetCount = packetCount
-                )
-
-                withContext(Dispatchers.Main) {
-                    tile.state = Tile.STATE_ACTIVE
-                    tile.label = targetDevice.name
-                    tile.updateTile()
-
-                    result.fold(
-                        onSuccess = {
-                            val msg = getString(R.string.packet_sent_success, targetDevice.name, packetCount)
-                            Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
-                        },
-                        onFailure = {
-                            val msg = getString(R.string.packet_sent_error, it.localizedMessage ?: "")
-                            Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
-                        }
+                withTimeoutOrNull(6000L) {
+                    val packetCount = prefs.getInt("packet_count", 3)
+                    val result = WolManager.sendMagicPacket(
+                        macAddress = targetDevice.macAddress,
+                        ipAddress = targetDevice.ipAddress,
+                        localIp = targetDevice.localIp,
+                        port = targetDevice.port,
+                        secureOnPassword = targetDevice.secureOnPassword,
+                        packetCount = packetCount
                     )
-                }
 
-                delay(1500)
+                    withContext(Dispatchers.Main) {
+                        tile.state = Tile.STATE_ACTIVE
+                        tile.label = targetDevice.name
+                        tile.updateTile()
 
-                withContext(Dispatchers.Main) {
-                    tile.state = Tile.STATE_INACTIVE
-                    tile.label = targetDevice.name
-                    tile.updateTile()
+                        result.fold(
+                            onSuccess = {
+                                val msg = getString(R.string.packet_sent_success, targetDevice.name, packetCount)
+                                Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
+                            },
+                            onFailure = {
+                                val msg = getString(R.string.packet_sent_error, it.localizedMessage ?: "")
+                                Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+
+                    delay(1500)
+
+                    withContext(Dispatchers.Main) {
+                        tile.state = Tile.STATE_INACTIVE
+                        tile.label = targetDevice.name
+                        tile.updateTile()
+                    }
                 }
 
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
                 if (wakeLock?.isHeld == true) {
-                    wakeLock.release()
+                    runCatching { wakeLock.release() }
                 }
             }
         }

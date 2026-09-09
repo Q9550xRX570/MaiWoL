@@ -7,6 +7,8 @@ import com.mai.wol.data.DeviceEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
@@ -35,20 +37,23 @@ object NetworkScanner {
         val subnetBase = localIp.substringBeforeLast(".") + "."
 
         val commonPorts = listOf(80, 445, 139, 22, 8080, 9)
+        val concurrencyLimit = Semaphore(30)
 
         val jobs = (1..254).map { hostSuffix ->
             async {
-                val targetIp = "$subnetBase$hostSuffix"
-                if (isHostReachable(targetIp, commonPorts)) {
-                    val hostName = resolveHostName(targetIp)
-                    val displayName = if (hostName != targetIp && hostName.isNotBlank()) {
-                        hostName
+                concurrencyLimit.withPermit {
+                    val targetIp = "$subnetBase$hostSuffix"
+                    if (isHostReachable(targetIp, commonPorts)) {
+                        val hostName = resolveHostName(targetIp)
+                        val displayName = if (hostName != targetIp && hostName.isNotBlank()) {
+                            hostName
+                        } else {
+                            "Cihaz ($targetIp)"
+                        }
+                        ScannedDevice(name = displayName, ip = targetIp)
                     } else {
-                        "Cihaz ($targetIp)"
+                        null
                     }
-                    ScannedDevice(name = displayName, ip = targetIp)
-                } else {
-                    null
                 }
             }
         }
@@ -106,26 +111,20 @@ object NetworkScanner {
     }
 
     private fun isHostReachable(ip: String, ports: List<Int>): Boolean {
-        try {
-            val process = Runtime.getRuntime().exec("ping -c 1 -W 1 -w 1 $ip")
-            val exitCode = process.waitFor()
-            if (exitCode == 0) return true
-        } catch (_: Exception) {}
-
-        try {
-            if (InetAddress.getByName(ip).isReachable(200)) return true
-        } catch (_: Exception) {}
-
         for (port in ports) {
             try {
                 Socket().use { socket ->
-                    socket.connect(InetSocketAddress(ip, port), 80)
+                    socket.connect(InetSocketAddress(ip, port), 70)
                     return true
                 }
             } catch (_: Exception) {}
         }
 
-        return false
+        return try {
+            InetAddress.getByName(ip).isReachable(100)
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun resolveHostName(ip: String): String {
@@ -197,7 +196,8 @@ object DeviceStatusChecker {
                 localOsServicePorts.add(0, targetPort)
             }
 
-            if (pingHostAccurate(effectiveLocalIp) || isAnyPortOpen(effectiveLocalIp, localOsServicePorts, 250)) {
+            val isPortOpen = isAnyPortOpen(effectiveLocalIp, localOsServicePorts, 200)
+            if (isPortOpen || (isPhoneOnSameSubnet && pingHostAccurate(effectiveLocalIp))) {
                 return@withContext DeviceStatus.ONLINE
             }
         }
@@ -212,7 +212,7 @@ object DeviceStatusChecker {
             }
 
             if (specificWanPorts.isNotEmpty()) {
-                if (isAnyPortOpen(effectiveWanAddress, specificWanPorts, 350)) {
+                if (isAnyPortOpen(effectiveWanAddress, specificWanPorts, 300)) {
                     return@withContext DeviceStatus.ONLINE
                 }
             }
@@ -263,7 +263,7 @@ object DeviceStatusChecker {
         }
     }
 
-    private suspend fun isAnyPortOpen(host: String, ports: List<Int>, timeoutMs: Int = 250): Boolean = withContext(Dispatchers.IO) {
+    private suspend fun isAnyPortOpen(host: String, ports: List<Int>, timeoutMs: Int = 200): Boolean = withContext(Dispatchers.IO) {
         if (host.isBlank() || isBroadcastAddress(host) || ports.isEmpty()) return@withContext false
         val validPorts = ports.filter { it in 1..65535 }.distinct()
         if (validPorts.isEmpty()) return@withContext false

@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 class DeviceWidgetProvider : AppWidgetProvider() {
 
@@ -69,43 +70,45 @@ class DeviceWidgetProvider : AppWidgetProvider() {
                         acquire(4000)
                     }
 
-                    val db = AppDatabase.getDatabase(context)
-                    val device = db.deviceDao().getDeviceById(deviceId)
+                    withTimeoutOrNull(6000L) {
+                        val db = AppDatabase.getDatabase(context)
+                        val device = db.deviceDao().getDeviceById(deviceId)
 
-                    if (device != null) {
-                        val packetCount = prefs.getInt("packet_count", 3)
+                        if (device != null) {
+                            val packetCount = prefs.getInt("packet_count", 3)
 
-                        val result = WolManager.sendMagicPacket(
-                            macAddress = device.macAddress,
-                            ipAddress = device.ipAddress,
-                            localIp = device.localIp,
-                            port = device.port,
-                            secureOnPassword = device.secureOnPassword,
-                            packetCount = packetCount
-                        )
-
-                        withContext(Dispatchers.Main) {
-                            result.fold(
-                                onSuccess = {
-                                    val msg = context.getString(R.string.packet_sent_success, device.name, packetCount)
-                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                },
-                                onFailure = {
-                                    val msg = context.getString(R.string.packet_sent_error, it.localizedMessage ?: "")
-                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                }
+                            val result = WolManager.sendMagicPacket(
+                                macAddress = device.macAddress,
+                                ipAddress = device.ipAddress,
+                                localIp = device.localIp,
+                                port = device.port,
+                                secureOnPassword = device.secureOnPassword,
+                                packetCount = packetCount
                             )
-                        }
-                    } else {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, context.getString(R.string.widget_device_not_found), Toast.LENGTH_SHORT).show()
+
+                            withContext(Dispatchers.Main) {
+                                result.fold(
+                                    onSuccess = {
+                                        val msg = context.getString(R.string.packet_sent_success, device.name, packetCount)
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    },
+                                    onFailure = {
+                                        val msg = context.getString(R.string.packet_sent_error, it.localizedMessage ?: "")
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, context.getString(R.string.widget_device_not_found), Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {
                     if (wakeLock?.isHeld == true) {
-                        wakeLock.release()
+                        runCatching { wakeLock.release() }
                     }
                     pendingResult.finish()
                 }

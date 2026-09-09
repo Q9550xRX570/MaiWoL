@@ -49,7 +49,6 @@ object ShutdownManager {
         for (host in candidateHosts) {
             var session: Session? = null
             try {
-                // Wi-Fi gecikmelerine karşı 3 saniyelik port kontrolü
                 if (!isTcpPortOpen(host, port, 3000)) {
                     lastErrorMsg = "$host:$port portu kapalı veya SSH servisi çalışmıyor."
                     continue
@@ -69,11 +68,12 @@ object ShutdownManager {
                 channel.setCommand(command)
                 channel.connect(5000)
 
-                val reader = BufferedReader(InputStreamReader(channel.inputStream))
                 val output = StringBuilder()
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    output.append(line).append("\n")
+                BufferedReader(InputStreamReader(channel.inputStream)).use { reader ->
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        output.append(line).append("\n")
+                    }
                 }
 
                 channel.disconnect()
@@ -111,9 +111,10 @@ object ShutdownManager {
             return Result.failure(Exception("HTTP Webhook URL adresi belirtilmedi."))
         }
 
+        var connection: HttpURLConnection? = null
         return try {
             val url = URL(urlStr)
-            val connection = url.openConnection() as HttpURLConnection
+            connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = method
             connection.connectTimeout = 6000
             connection.readTimeout = 6000
@@ -125,7 +126,9 @@ object ShutdownManager {
             }
 
             val responseCode = connection.responseCode
-            connection.disconnect()
+
+            runCatching { connection.inputStream?.close() }
+            runCatching { connection.errorStream?.close() }
 
             if (responseCode in 200..299) {
                 Result.success("HTTP İsteği Başarılı (Kod: $responseCode)")
@@ -134,6 +137,8 @@ object ShutdownManager {
             }
         } catch (e: Exception) {
             Result.failure(Exception("HTTP Hatası: ${e.localizedMessage ?: e.message}"))
+        } finally {
+            connection?.disconnect()
         }
     }
 }

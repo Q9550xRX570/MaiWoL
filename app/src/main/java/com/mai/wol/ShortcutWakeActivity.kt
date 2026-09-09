@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 class ShortcutWakeActivity : Activity() {
 
@@ -49,39 +50,41 @@ class ShortcutWakeActivity : Activity() {
                     acquire(4000)
                 }
 
-                val db = AppDatabase.getDatabase(applicationContext)
-                val device = db.deviceDao().getDeviceById(deviceId)
+                withTimeoutOrNull(6000L) {
+                    val db = AppDatabase.getDatabase(applicationContext)
+                    val device = db.deviceDao().getDeviceById(deviceId)
 
-                if (device != null) {
-                    val packetCount = prefs.getInt("packet_count", 3)
+                    if (device != null) {
+                        val packetCount = prefs.getInt("packet_count", 3)
 
-                    val result = WolManager.sendMagicPacket(
-                        macAddress = device.macAddress,
-                        ipAddress = device.ipAddress,
-                        localIp = device.localIp,
-                        port = device.port,
-                        secureOnPassword = device.secureOnPassword,
-                        packetCount = packetCount
-                    )
-
-                    withContext(Dispatchers.Main) {
-                        result.fold(
-                            onSuccess = {
-                                val msg = getString(R.string.packet_sent_success, device.name, packetCount)
-                                Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
-                            },
-                            onFailure = {
-                                val msg = getString(R.string.packet_sent_error, it.localizedMessage ?: "")
-                                Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
-                            }
+                        val result = WolManager.sendMagicPacket(
+                            macAddress = device.macAddress,
+                            ipAddress = device.ipAddress,
+                            localIp = device.localIp,
+                            port = device.port,
+                            secureOnPassword = device.secureOnPassword,
+                            packetCount = packetCount
                         )
+
+                        withContext(Dispatchers.Main) {
+                            result.fold(
+                                onSuccess = {
+                                    val msg = getString(R.string.packet_sent_success, device.name, packetCount)
+                                    Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
+                                },
+                                onFailure = {
+                                    val msg = getString(R.string.packet_sent_error, it.localizedMessage ?: "")
+                                    Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
                 if (wakeLock?.isHeld == true) {
-                    wakeLock.release()
+                    runCatching { wakeLock.release() }
                 }
                 withContext(Dispatchers.Main) {
                     finish()

@@ -114,6 +114,10 @@ import java.util.Date
 import java.util.Locale
 import java.util.zip.ZipFile
 import kotlin.math.roundToInt
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.ui.platform.LocalLifecycleOwner
+
 
 class MainActivity : ComponentActivity() {
 
@@ -413,6 +417,7 @@ fun HomeScreen(
     var showAdvancedScreen by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val prefs = remember { context.getSharedPreferences("wol_settings", Context.MODE_PRIVATE) }
     val appLanguage = remember { prefs.getString("app_language", "") ?: "" }
 
@@ -443,13 +448,15 @@ fun HomeScreen(
     var deviceToChangeGroup by remember { mutableStateOf<DeviceEntity?>(null) }
     var deviceToShutdown by remember { mutableStateOf<DeviceEntity?>(null) }
 
-    LaunchedEffect(devices, statusCheckInterval) {
+    LaunchedEffect(devices, statusCheckInterval, lifecycleOwner) {
         if (statusCheckInterval > 0) {
-            while (isActive) {
-                if (devices.isNotEmpty()) {
-                    viewModel.checkAllDevicesStatus(context, devices)
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (isActive) {
+                    if (devices.isNotEmpty()) {
+                        viewModel.checkAllDevicesStatus(context, devices)
+                    }
+                    delay(statusCheckInterval.toLong().coerceAtLeast(1000L))
                 }
-                delay(statusCheckInterval.toLong().coerceAtLeast(1000L))
             }
         }
     }
@@ -5129,9 +5136,9 @@ fun getAppVersionAndRecommendation(context: Context): Pair<String, String> {
         } else {
             context.packageManager.getPackageInfo(context.packageName, 0)
         }
-        pInfo.versionName ?: "2.2.0"
+        pInfo.versionName ?: "2.2.3"
     } catch (_: Exception) {
-        "2.2.0"
+        "2.2.3"
     }
 
     val rawArch = detectApkArchitecture(context)

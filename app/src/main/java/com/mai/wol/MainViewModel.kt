@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class MainViewModel(
@@ -292,9 +293,9 @@ class MainViewModel(
 
     fun refreshDeviceStatus(context: Context, device: DeviceEntity) {
         viewModelScope.launch {
-            _deviceStatuses.value = _deviceStatuses.value + (device.id to DeviceStatus.CHECKING)
+            _deviceStatuses.update { it + (device.id to DeviceStatus.CHECKING) }
             val status = DeviceStatusChecker.checkStatus(context, device)
-            _deviceStatuses.value = _deviceStatuses.value + (device.id to status)
+            _deviceStatuses.update { it + (device.id to status) }
         }
     }
 
@@ -303,7 +304,13 @@ class MainViewModel(
             deviceList.forEach { dev ->
                 launch {
                     val status = DeviceStatusChecker.checkStatus(context, dev)
-                    _deviceStatuses.value = _deviceStatuses.value + (dev.id to status)
+                    _deviceStatuses.update { current ->
+                        if (current[dev.id] != status) {
+                            current + (dev.id to status)
+                        } else {
+                            current
+                        }
+                    }
                 }
             }
         }

@@ -91,13 +91,16 @@ object AlarmScheduler {
         val daysList = daysOfWeekStr.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
         val now = System.currentTimeMillis()
 
+        val candidate = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
         for (dayOffset in 0..7) {
-            val candidate = Calendar.getInstance().apply {
-                add(Calendar.DAY_OF_YEAR, dayOffset)
-                set(Calendar.HOUR_OF_DAY, hour)
-                set(Calendar.MINUTE, minute)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
+            if (dayOffset > 0) {
+                candidate.add(Calendar.DAY_OF_YEAR, 1)
             }
 
             val currentDayOfWeek = when (candidate.get(Calendar.DAY_OF_WEEK)) {

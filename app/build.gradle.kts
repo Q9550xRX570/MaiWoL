@@ -1,5 +1,5 @@
 plugins {
-    id("com.android.application")
+    alias(libs.plugins.android.application)
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
@@ -7,16 +7,16 @@ plugins {
 
 android {
     namespace = "com.mai.wol"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.mai.wol"
 
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
 
-        versionCode = 8
-        versionName = "2.2.2"
+        versionCode = 9
+        versionName = "2.2.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -39,6 +39,21 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+
+    applicationVariants.all {
+        val buildTypeName = buildType.name
+        val appVersion = versionName
+
+        outputs.mapNotNull { it as? com.android.build.gradle.internal.api.BaseVariantOutputImpl }.forEach { output ->
+            val abi = output.getFilter(com.android.build.OutputFile.ABI) ?: "universal"
+
+            if (buildTypeName == "release") {
+                output.outputFileName = "MaiWoL-v${appVersion}-${abi}.apk"
+            } else {
+                output.outputFileName = "MaiWoL-v${appVersion}-${abi}-${buildTypeName}.apk"
+            }
         }
     }
 
@@ -72,7 +87,6 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // SSH Kapatma Motoru
     implementation("com.github.mwiede:jsch:0.2.20")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

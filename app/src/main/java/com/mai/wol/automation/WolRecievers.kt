@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class WolAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -35,30 +36,32 @@ class WolAlarmReceiver : BroadcastReceiver() {
                     acquire(5000)
                 }
 
-                val db = AppDatabase.getDatabase(context)
-                val device = db.deviceDao().getDeviceById(deviceId)
-                if (device != null) {
-                    val prefs = context.getSharedPreferences("wol_settings", Context.MODE_PRIVATE)
-                    val packetCount = prefs.getInt("packet_count", 3)
+                withTimeoutOrNull(9000L) {
+                    val db = AppDatabase.getDatabase(context)
+                    val device = db.deviceDao().getDeviceById(deviceId)
+                    if (device != null) {
+                        val prefs = context.getSharedPreferences("wol_settings", Context.MODE_PRIVATE)
+                        val packetCount = prefs.getInt("packet_count", 3)
 
-                    WolManager.sendMagicPacket(
-                        macAddress = device.macAddress,
-                        ipAddress = device.ipAddress,
-                        localIp = device.localIp,
-                        port = device.port,
-                        secureOnPassword = device.secureOnPassword,
-                        packetCount = packetCount
-                    )
+                        WolManager.sendMagicPacket(
+                            macAddress = device.macAddress,
+                            ipAddress = device.ipAddress,
+                            localIp = device.localIp,
+                            port = device.port,
+                            secureOnPassword = device.secureOnPassword,
+                            packetCount = packetCount
+                        )
 
-                    showNotification(context, device.name)
+                        showNotification(context, device.name)
 
-                    if (scheduleId != -1L) {
-                        val schedule = db.scheduleDao().getScheduleById(scheduleId)
-                        if (schedule != null) {
-                            if (schedule.isOneTime) {
-                                db.scheduleDao().updateSchedule(schedule.copy(isEnabled = false))
-                            } else if (schedule.isEnabled) {
-                                AlarmScheduler.scheduleAlarm(context, schedule)
+                        if (scheduleId != -1L) {
+                            val schedule = db.scheduleDao().getScheduleById(scheduleId)
+                            if (schedule != null) {
+                                if (schedule.isOneTime) {
+                                    db.scheduleDao().updateSchedule(schedule.copy(isEnabled = false))
+                                } else if (schedule.isEnabled) {
+                                    AlarmScheduler.scheduleAlarm(context, schedule)
+                                }
                             }
                         }
                     }
@@ -67,7 +70,7 @@ class WolAlarmReceiver : BroadcastReceiver() {
                 e.printStackTrace()
             } finally {
                 if (wakeLock?.isHeld == true) {
-                    wakeLock.release()
+                    runCatching { wakeLock.release() }
                 }
                 pendingResult.finish()
             }
@@ -123,7 +126,6 @@ class WolAutomationReceiver : BroadcastReceiver() {
         if (intent.action == "com.mai.wol.ACTION_WAKE_DEVICE") {
             val pendingResult = goAsync()
 
-            // Parametreleri hem String hem Sayı olarak esnekçe oku
             val rawDeviceId = intent.getStringExtra("device_id")?.toLongOrNull()
                 ?: intent.getLongExtra("device_id", -1L).takeIf { it != -1L }
                 ?: intent.getIntExtra("device_id", -1).takeIf { it != -1 }?.toLong()
@@ -158,56 +160,58 @@ class WolAutomationReceiver : BroadcastReceiver() {
                         acquire(5000)
                     }
 
-                    val db = AppDatabase.getDatabase(context)
-                    val prefs = context.getSharedPreferences("wol_settings", Context.MODE_PRIVATE)
-                    val packetCount = intent.getStringExtra("packet_count")?.toIntOrNull()
-                        ?: intent.getIntExtra("packet_count", prefs.getInt("packet_count", 3))
+                    withTimeoutOrNull(9000L) {
+                        val db = AppDatabase.getDatabase(context)
+                        val prefs = context.getSharedPreferences("wol_settings", Context.MODE_PRIVATE)
+                        val packetCount = intent.getStringExtra("packet_count")?.toIntOrNull()
+                            ?: intent.getIntExtra("packet_count", prefs.getInt("packet_count", 3))
 
-                    fun clean(mac: String) = mac.replace(Regex("[^a-fA-F0-9]"), "")
+                        val cleanRegex = Regex("[^a-fA-F0-9]")
+                        fun clean(mac: String) = mac.replace(cleanRegex, "")
 
-                    val allDevices = db.deviceDao().getAllDevices().firstOrNull() ?: emptyList()
+                        val allDevices = db.deviceDao().getAllDevices().firstOrNull() ?: emptyList()
 
-                    val targetDevice = when {
-                        rawDeviceId != -1L -> allDevices.firstOrNull { it.id == rawDeviceId }
-                        !rawDeviceName.isNullOrBlank() -> allDevices.firstOrNull { it.name.equals(rawDeviceName.trim(), ignoreCase = true) }
-                        !rawMac.isNullOrBlank() -> allDevices.firstOrNull { clean(it.macAddress).equals(clean(rawMac), ignoreCase = true) }
-                        else -> null
+                        val targetDevice = when {
+                            rawDeviceId != -1L -> allDevices.firstOrNull { it.id == rawDeviceId }
+                            !rawDeviceName.isNullOrBlank() -> allDevices.firstOrNull { it.name.equals(rawDeviceName.trim(), ignoreCase = true) }
+                            !rawMac.isNullOrBlank() -> allDevices.firstOrNull { clean(it.macAddress).equals(clean(rawMac), ignoreCase = true) }
+                            else -> null
+                        }
+
+                        val sentDeviceName: String
+
+                        if (targetDevice != null) {
+                            sentDeviceName = targetDevice.name
+                            WolManager.sendMagicPacket(
+                                macAddress = targetDevice.macAddress,
+                                ipAddress = targetDevice.ipAddress,
+                                localIp = targetDevice.localIp,
+                                port = targetDevice.port,
+                                secureOnPassword = targetDevice.secureOnPassword,
+                                packetCount = packetCount
+                            )
+                        } else if (!rawMac.isNullOrBlank()) {
+                            sentDeviceName = rawMac
+                            WolManager.sendMagicPacket(
+                                macAddress = rawMac,
+                                ipAddress = rawIp,
+                                localIp = rawLocalIp,
+                                port = rawPort,
+                                secureOnPassword = rawSecureOn,
+                                packetCount = packetCount
+                            )
+                        } else {
+                            return@withTimeoutOrNull
+                        }
+
+                        showExternalNotification(context, sentDeviceName)
                     }
-
-                    val sentDeviceName: String
-
-                    if (targetDevice != null) {
-                        sentDeviceName = targetDevice.name
-                        WolManager.sendMagicPacket(
-                            macAddress = targetDevice.macAddress,
-                            ipAddress = targetDevice.ipAddress,
-                            localIp = targetDevice.localIp,
-                            port = targetDevice.port,
-                            secureOnPassword = targetDevice.secureOnPassword,
-                            packetCount = packetCount
-                        )
-                    } else if (!rawMac.isNullOrBlank()) {
-                        sentDeviceName = rawMac
-                        WolManager.sendMagicPacket(
-                            macAddress = rawMac,
-                            ipAddress = rawIp,
-                            localIp = rawLocalIp,
-                            port = rawPort,
-                            secureOnPassword = rawSecureOn,
-                            packetCount = packetCount
-                        )
-                    } else {
-                        return@launch
-                    }
-
-                    // Harici tetikleme başarılı olduğunda bildirim ver
-                    showExternalNotification(context, sentDeviceName)
 
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {
                     if (wakeLock?.isHeld == true) {
-                        wakeLock.release()
+                        runCatching { wakeLock.release() }
                     }
                     pendingResult.finish()
                 }

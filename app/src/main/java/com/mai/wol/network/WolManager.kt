@@ -1,12 +1,17 @@
 package com.mai.wol.network
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 object WolManager {
+
+    private val HEX_CLEAN_REGEX = Regex("[^a-fA-F0-9]")
 
     suspend fun sendMagicPacket(
         macAddress: String,
@@ -16,17 +21,26 @@ object WolManager {
         secureOnPassword: String? = null,
         packetCount: Int = 1
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        val cleanMac = macAddress.replace(Regex("[^a-fA-F0-9]"), "")
+        val cleanMac = macAddress.replace(HEX_CLEAN_REGEX, "")
         if (cleanMac.length != 12) {
             return@withContext Result.failure(IllegalArgumentException("Geçersiz MAC adresi. 12 haneli hex olmalıdır."))
         }
 
-        val macBytes = cleanMac.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        val macBytes = ByteArray(6)
+        for (i in 0 until 6) {
+            val idx = i * 2
+            macBytes[i] = cleanMac.substring(idx, idx + 2).toInt(16).toByte()
+        }
 
         val secureOnBytes = secureOnPassword?.takeIf { it.isNotBlank() }?.let { pwd ->
-            val cleanPwd = pwd.replace(Regex("[^a-fA-F0-9]"), "")
+            val cleanPwd = pwd.replace(HEX_CLEAN_REGEX, "")
             if (cleanPwd.length == 12) {
-                cleanPwd.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+                ByteArray(6).apply {
+                    for (i in 0 until 6) {
+                        val idx = i * 2
+                        this[i] = cleanPwd.substring(idx, idx + 2).toInt(16).toByte()
+                    }
+                }
             } else null
         }
 
@@ -54,62 +68,53 @@ object WolManager {
             return@withContext Result.failure(Exception("Gönderilecek geçerli hedef IP/Adres girilmedi."))
         }
 
-        var sentCount = 0
-        val errors = mutableListOf<String>()
         val countToSet = packetCount.coerceIn(1, 20)
 
-        for (targetHost in targets) {
-            try {
-                val address = InetAddress.getByName(targetHost)
-                val isBroadcastTarget = targetHost.endsWith(".255") || targetHost == "255.255.255.255"
-
-                var targetSent = 0
-                repeat(countToSet) {
-                    var success = sendPacket(bytes, address, port, enableBroadcast = isBroadcastTarget)
-                    if (!success) {
-                        success = sendPacket(bytes, address, port, enableBroadcast = !isBroadcastTarget)
-                    }
-                    if (success) targetSent++
-                    if (countToSet > 1) {
-                        Thread.sleep(50)
-                    }
+        val results = coroutineScope {
+            targets.map { targetHost ->
+                async {
+                    sendToHost(targetHost, bytes, port, countToSet)
                 }
-
-                if (targetSent > 0) {
-                    sentCount += targetSent
-                } else {
-                    errors.add(targetHost)
-                }
-            } catch (e: Exception) {
-                errors.add("$targetHost (${e.localizedMessage ?: e.message})")
             }
-        }
+        }.map { it.await() }
 
-        if (sentCount > 0) {
+        val successfulHosts = results.filter { it.isSuccess }
+        if (successfulHosts.isNotEmpty()) {
             Result.success(Unit)
         } else {
-            val errorMsg = "Paket gönderilemedi: ${errors.joinToString("; ")}"
-            Result.failure(Exception(errorMsg))
+            val errorMsg = results.mapNotNull { it.exceptionOrNull()?.message }.joinToString("; ")
+            Result.failure(Exception("Paket gönderilemedi: $errorMsg"))
         }
     }
 
-    private fun sendPacket(
-        bytes: ByteArray,
-        address: InetAddress,
+    private suspend fun sendToHost(
+        host: String,
+        payload: ByteArray,
         port: Int,
-        enableBroadcast: Boolean
-    ): Boolean {
+        count: Int
+    ): Result<Int> {
         return try {
+            val address = InetAddress.getByName(host)
+            val packet = DatagramPacket(payload, payload.size, address, port)
+
             DatagramSocket().use { socket ->
-                if (enableBroadcast) {
-                    runCatching { socket.broadcast = true }
+                runCatching { socket.broadcast = true }
+                var sent = 0
+                repeat(count) { i ->
+                    try {
+                        socket.send(packet)
+                        sent++
+                    } catch (_: Exception) {}
+
+                    if (count > 1 && i < count - 1) {
+                        delay(50)
+                    }
                 }
-                val packet = DatagramPacket(bytes, bytes.size, address, port)
-                socket.send(packet)
-                true
+                if (sent > 0) Result.success(sent)
+                else Result.failure(Exception("$host adresine paket iletilemedi"))
             }
         } catch (e: Exception) {
-            false
+            Result.failure(Exception("$host (${e.localizedMessage ?: e.message})"))
         }
     }
 }

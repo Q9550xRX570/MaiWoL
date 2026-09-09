@@ -138,17 +138,16 @@ object BackupManager {
 
     fun readStringFromUri(context: Context, uri: Uri): String? {
         return try {
-            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-            val reader = BufferedReader(InputStreamReader(inputStream))
-            val jsonString = reader.readText()
-            reader.close()
-            jsonString
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                    reader.readText()
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
-
     fun parseBackupJson(jsonString: String): BackupData? {
         return try {
             val root = JSONObject(jsonString)
@@ -209,12 +208,12 @@ object BackupManager {
 
     fun writeStringToUri(context: Context, uri: Uri, content: String): Boolean {
         return try {
-            val outputStream = context.contentResolver.openOutputStream(uri, "wt") ?: return false
-            val writer = OutputStreamWriter(outputStream)
-            writer.write(content)
-            writer.flush()
-            writer.close()
-            true
+            context.contentResolver.openOutputStream(uri, "wt")?.use { outputStream ->
+                OutputStreamWriter(outputStream).use { writer ->
+                    writer.write(content)
+                    writer.flush()
+                }
+            } != null
         } catch (e: Exception) {
             e.printStackTrace()
             false
