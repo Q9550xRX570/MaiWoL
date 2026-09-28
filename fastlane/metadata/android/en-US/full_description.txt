@@ -1,6 +1,8 @@
 MaiWoL is a modern, enterprise-grade, lightweight, and 100% Free and Open Source (FOSS) Wake-on-LAN and Remote Power Management suite for Android.
 
-Major Features in v2.2.0:
+What's new in 2.2.4: Online now requires real proof (an SSH banner, a Windows service or a ping reply) and the card shows why. Add/Edit has a Connection Check that works without remote shutdown. SSH can sign in with a key file of any extension, including Ed25519 and PuTTY .ppk, and can be tested without shutting down. Magic packets are also sent to the local network broadcast. Android backup no longer includes the device database or the app PIN. GitHub releases include arm64-v8a, armeabi-v7a, x86_64 and universal APKs. F-Droid publishes the universal build.
+
+Features:
 • Remote Shutdown Engine: Native OpenSSH terminal execution & HTTP Webhook (GET/POST) support for one-tap remote computer shutdown and locking
 • Forced Instant Halting: Integrated /f parameter ensuring guaranteed instant shutdown without hanging on unresponsive applications
 • Seamless LAN/WAN Dual-Routing: Auto-switches between local subnet on home Wi-Fi and port-forwarded WAN/DDNS endpoints on mobile data

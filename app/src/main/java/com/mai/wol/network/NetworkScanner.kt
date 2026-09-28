@@ -30,6 +30,26 @@ enum class DeviceStatus {
     UNREACHABLE
 }
 
+enum class StatusReason {
+    NOT_CHECKED,
+    SSH_BANNER,
+    SERVICE_PORT,
+    PING_REPLY,
+    WAN_PORT,
+    SAME_SUBNET_SILENT,
+    NO_ROUTE
+}
+
+data class StatusResult(
+    val status: DeviceStatus,
+    val reason: StatusReason = StatusReason.NOT_CHECKED,
+    val detail: String = ""
+) {
+    companion object {
+        val CHECKING = StatusResult(DeviceStatus.CHECKING)
+    }
+}
+
 object NetworkScanner {
 
     suspend fun scanLocalSubnet(context: Context, useShizuku: Boolean = false): List<ScannedDevice> = withContext(Dispatchers.IO) {
@@ -156,12 +176,12 @@ object NetworkScanner {
 
 object DeviceStatusChecker {
 
-    suspend fun checkStatus(context: Context, device: DeviceEntity): DeviceStatus = withContext(Dispatchers.IO) {
+    suspend fun checkStatus(context: Context, device: DeviceEntity): StatusResult = withContext(Dispatchers.IO) {
         val rawLocalIp = device.localIp.trim()
         val rawWanAddress = device.ipAddress.trim()
         val targetPort = device.port
         val shutdownPort = device.shutdownPort
-        val shutdownType = device.shutdownType
+        val isSsh = device.shutdownType.equals("SSH", ignoreCase = true) && shutdownPort in 1..65535
 
         val effectiveLocalIp = when {
             rawLocalIp.isNotBlank() && !isBroadcastAddress(rawLocalIp) -> rawLocalIp
@@ -178,61 +198,74 @@ object DeviceStatusChecker {
         val isPhoneOnLocalWifi = !phoneLocalIp.isNullOrBlank() && isPrivateIp(phoneLocalIp)
 
         val isPhoneOnSameSubnet = if (isPhoneOnLocalWifi && effectiveLocalIp.isNotBlank()) {
-            val phoneSubnet = phoneLocalIp.substringBeforeLast(".")
-            val deviceSubnet = effectiveLocalIp.substringBeforeLast(".")
-            phoneSubnet == deviceSubnet
+            phoneLocalIp.substringBeforeLast(".") == effectiveLocalIp.substringBeforeLast(".")
         } else {
             false
         }
 
+        if (isSsh) {
+            val sshHosts = listOf(effectiveLocalIp, effectiveWanAddress).filter { it.isNotBlank() }
+            for (host in sshHosts) {
+                if (readSshBanner(host, shutdownPort, 1500)) {
+                    return@withContext StatusResult(DeviceStatus.ONLINE, StatusReason.SSH_BANNER, shutdownPort.toString())
+                }
+            }
+        }
+
         if (effectiveLocalIp.isNotBlank()) {
             val localOsServicePorts = mutableListOf(445, 135, 139, 3389, 5357)
-            if (shutdownType.equals("SSH", ignoreCase = true) && shutdownPort in 1..65535) {
-                localOsServicePorts.add(0, shutdownPort)
-            } else if (shutdownPort !in listOf(7, 9, 80, 443) && shutdownPort in 1..65535) {
-                localOsServicePorts.add(0, shutdownPort)
-            }
             if (targetPort !in listOf(7, 9, 80, 443) && targetPort in 1..65535 && !localOsServicePorts.contains(targetPort)) {
                 localOsServicePorts.add(0, targetPort)
             }
 
-            val isPortOpen = isAnyPortOpen(effectiveLocalIp, localOsServicePorts, 200)
-            if (isPortOpen || (isPhoneOnSameSubnet && pingHostAccurate(effectiveLocalIp))) {
-                return@withContext DeviceStatus.ONLINE
+            val openPort = firstOpenPort(effectiveLocalIp, localOsServicePorts, 400)
+            if (openPort != null) {
+                return@withContext StatusResult(DeviceStatus.ONLINE, StatusReason.SERVICE_PORT, openPort.toString())
+            }
+            if (isPhoneOnSameSubnet && pingHostAccurate(effectiveLocalIp)) {
+                return@withContext StatusResult(DeviceStatus.ONLINE, StatusReason.PING_REPLY, effectiveLocalIp)
             }
         }
 
         if (!isPhoneOnSameSubnet && effectiveWanAddress.isNotBlank()) {
             val specificWanPorts = mutableListOf<Int>()
-            if (shutdownType.equals("SSH", ignoreCase = true) && shutdownPort in 1..65535) {
-                specificWanPorts.add(shutdownPort)
-            }
-            if (targetPort !in listOf(7, 9, 80, 443) && targetPort in 1..65535 && !specificWanPorts.contains(targetPort)) {
+            if (targetPort !in listOf(7, 9, 80, 443) && targetPort in 1..65535) {
                 specificWanPorts.add(targetPort)
             }
-
-            if (specificWanPorts.isNotEmpty()) {
-                if (isAnyPortOpen(effectiveWanAddress, specificWanPorts, 300)) {
-                    return@withContext DeviceStatus.ONLINE
-                }
+            val openWanPort = firstOpenPort(effectiveWanAddress, specificWanPorts, 800)
+            if (openWanPort != null) {
+                return@withContext StatusResult(DeviceStatus.ONLINE, StatusReason.WAN_PORT, openWanPort.toString())
             }
         }
 
         if (isPhoneOnSameSubnet) {
-            return@withContext DeviceStatus.STANDBY
+            return@withContext StatusResult(DeviceStatus.STANDBY, StatusReason.SAME_SUBNET_SILENT)
         }
 
-        if (effectiveWanAddress.isNotBlank()) {
-            try {
-                val address = InetAddress.getByName(effectiveWanAddress)
-                if (address != null && !address.isLoopbackAddress && !address.isAnyLocalAddress) {
-                    return@withContext DeviceStatus.STANDBY
-                }
-            } catch (_: Exception) {}
-        }
-
-        return@withContext DeviceStatus.UNREACHABLE
+        return@withContext StatusResult(DeviceStatus.UNREACHABLE, StatusReason.NO_ROUTE)
     }
+
+    internal fun readSshBanner(host: String, port: Int, timeoutMs: Int): Boolean {
+        if (host.isBlank() || isBroadcastAddress(host)) return false
+        return try {
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress(host, port), timeoutMs)
+                socket.soTimeout = timeoutMs
+                val input = socket.getInputStream()
+                val buffer = StringBuilder()
+                while (buffer.length < 255) {
+                    val b = input.read()
+                    if (b == -1 || b == '\n'.code) break
+                    buffer.append(b.toChar())
+                }
+                isSshBanner(buffer.toString())
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    internal fun isSshBanner(line: String): Boolean = line.trimStart().startsWith("SSH-")
 
     private fun pingHostAccurate(host: String): Boolean {
         if (host.isBlank() || isBroadcastAddress(host)) return false
@@ -263,24 +296,24 @@ object DeviceStatusChecker {
         }
     }
 
-    private suspend fun isAnyPortOpen(host: String, ports: List<Int>, timeoutMs: Int = 200): Boolean = withContext(Dispatchers.IO) {
-        if (host.isBlank() || isBroadcastAddress(host) || ports.isEmpty()) return@withContext false
+    private suspend fun firstOpenPort(host: String, ports: List<Int>, timeoutMs: Int): Int? = withContext(Dispatchers.IO) {
+        if (host.isBlank() || isBroadcastAddress(host) || ports.isEmpty()) return@withContext null
         val validPorts = ports.filter { it in 1..65535 }.distinct()
-        if (validPorts.isEmpty()) return@withContext false
+        if (validPorts.isEmpty()) return@withContext null
 
         val jobs = validPorts.map { port ->
             async {
                 try {
                     Socket().use { socket ->
                         socket.connect(InetSocketAddress(host, port), timeoutMs)
-                        true
+                        port
                     }
                 } catch (_: Exception) {
-                    false
+                    null
                 }
             }
         }
-        jobs.awaitAll().any { it }
+        jobs.awaitAll().firstOrNull { it != null }
     }
 
     private fun isPrivateIp(ip: String): Boolean {

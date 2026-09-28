@@ -56,6 +56,9 @@ object BackupManager {
             dObj.put("shutdownPassword", dev.shutdownPassword)
             dObj.put("shutdownCommand", dev.shutdownCommand)
             dObj.put("shutdownHttpUrl", dev.shutdownHttpUrl)
+            dObj.put("sshAuthType", dev.sshAuthType)
+            dObj.put("sshPrivateKey", dev.sshPrivateKey)
+            dObj.put("sshKeyPassphrase", dev.sshKeyPassphrase)
             devArray.put(dObj)
         }
         plainRoot.put("devices", devArray)
@@ -174,7 +177,10 @@ object BackupManager {
                     shutdownUsername = dObj.optString("shutdownUsername", ""),
                     shutdownPassword = dObj.optString("shutdownPassword", ""),
                     shutdownCommand = dObj.optString("shutdownCommand", "shutdown /s /t 0"),
-                    shutdownHttpUrl = dObj.optString("shutdownHttpUrl", "")
+                    shutdownHttpUrl = dObj.optString("shutdownHttpUrl", ""),
+                    sshAuthType = dObj.optString("sshAuthType", "PASSWORD"),
+                    sshPrivateKey = dObj.optString("sshPrivateKey", ""),
+                    sshKeyPassphrase = dObj.optString("sshKeyPassphrase", "")
                 )
                 devicesList.add(dev)
             }

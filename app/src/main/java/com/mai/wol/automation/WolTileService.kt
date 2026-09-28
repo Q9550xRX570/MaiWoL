@@ -1,5 +1,7 @@
 package com.mai.wol.automation
 
+import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -65,7 +67,7 @@ class WolTileService : TileService() {
                     val intent = Intent(applicationContext, MainActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
-                    startActivityAndCollapse(intent)
+                    launchAndCollapse(intent)
                 }
                 return@launch
             }
@@ -85,7 +87,7 @@ class WolTileService : TileService() {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                         putExtra("device_id", targetDevice.id)
                     }
-                    startActivityAndCollapse(unlockIntent)
+                    launchAndCollapse(unlockIntent)
                 }
                 return@launch
             }
@@ -144,6 +146,22 @@ class WolTileService : TileService() {
                     runCatching { wakeLock.release() }
                 }
             }
+        }
+    }
+
+    @SuppressLint("StartActivityAndCollapseDeprecated")
+    private fun launchAndCollapse(intent: Intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val pendingIntent = PendingIntent.getActivity(
+                applicationContext,
+                intent.component.hashCode(),
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            startActivityAndCollapse(pendingIntent)
+        } else {
+            @Suppress("DEPRECATION")
+            startActivityAndCollapse(intent)
         }
     }
 

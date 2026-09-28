@@ -240,4 +240,33 @@
     <string name="app_version">Uygulama Sürümü</string>
     <string name="universal_arch">Evrensel</string>
     <string name="arm64_recommended">ARM64 v8A önerilir</string>
+
+    <string name="reason_ssh_banner">SSH %1$s portunda yanıt verdi</string>
+    <string name="reason_service_port">Hizmet portu %1$s yanıt verdi</string>
+    <string name="reason_ping_reply">Ping yanıtı geldi</string>
+    <string name="reason_wan_port">Yönlendirilen port %1$s yanıt verdi</string>
+    <string name="reason_same_subnet_silent">Aynı ağda, yanıt yok</string>
+    <string name="reason_no_route">Aynı ağda değil</string>
+
+    <string name="connection_check">Bağlantı Kontrolü</string>
+    <string name="connection_check_desc">Bu bilgisayarın gerçekten açık, kapalı ya da ulaşılamaz olduğunu kontrol eder. Uzaktan kapatma kapalı olsa bile çalışır.</string>
+    <string name="check_now">Şimdi Kontrol Et</string>
+    <string name="checking_now">Kontrol ediliyor…</string>
+
+    <string name="ssh_auth_method">SSH Girişi</string>
+    <string name="ssh_auth_password">Şifre</string>
+    <string name="ssh_auth_key">Anahtar Dosyası</string>
+    <string name="ssh_key_select">Anahtar Dosyası Seç</string>
+    <string name="ssh_key_change">Anahtar Dosyasını Değiştir</string>
+    <string name="ssh_key_loaded">%1$s anahtarı yüklendi</string>
+    <string name="ssh_key_loaded_encrypted">%1$s anahtarı yüklendi (parolalı)</string>
+    <string name="ssh_key_invalid">Bu dosya geçerli bir SSH özel anahtarı değil</string>
+    <string name="ssh_key_read_error">Dosya okunamadı</string>
+    <string name="ssh_key_formats">Dosya uzantısı ne olursa olsun OpenSSH, PEM ve PuTTY (.ppk) anahtarları kabul edilir.</string>
+    <string name="ssh_key_passphrase">Anahtar Parolası (varsa)</string>
+    <string name="ssh_test">SSH Girişini Test Et</string>
+    <string name="ssh_test_ok">SSH girişi çalışıyor (%1$s)</string>
+    <string name="ssh_test_fail">SSH başarısız: %1$s</string>
+    <string name="ssh_continue_hint">Bu bilgisayarı uzaktan da kapatmak ister misiniz? Aşağıdan SSH seçin.</string>
+    <string name="ssh_continue">SSH ile Devam Et</string>
 </resources>

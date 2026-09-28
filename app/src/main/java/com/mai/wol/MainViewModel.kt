@@ -15,8 +15,8 @@ import com.mai.wol.data.DeviceDao
 import com.mai.wol.data.DeviceEntity
 import com.mai.wol.data.ScheduleDao
 import com.mai.wol.data.ScheduleEntity
-import com.mai.wol.network.DeviceStatus
 import com.mai.wol.network.DeviceStatusChecker
+import com.mai.wol.network.StatusResult
 import com.mai.wol.network.ShutdownManager
 import com.mai.wol.network.WolManager
 import com.mai.wol.widget.DeviceIconWidgetProvider
@@ -110,8 +110,8 @@ class MainViewModel(
     private val _isShizukuEnabled = MutableStateFlow(sharedPreferences.getBoolean("use_shizuku", false))
     val isShizukuEnabled: StateFlow<Boolean> = _isShizukuEnabled.asStateFlow()
 
-    private val _deviceStatuses = MutableStateFlow<Map<Long, DeviceStatus>>(emptyMap())
-    val deviceStatuses: StateFlow<Map<Long, DeviceStatus>> = _deviceStatuses.asStateFlow()
+    private val _deviceStatuses = MutableStateFlow<Map<Long, StatusResult>>(emptyMap())
+    val deviceStatuses: StateFlow<Map<Long, StatusResult>> = _deviceStatuses.asStateFlow()
 
     fun updateHideGroupCounts(hide: Boolean) {
         _hideGroupCounts.value = hide
@@ -228,38 +228,10 @@ class MainViewModel(
         sharedPreferences.edit().putBoolean("use_shizuku", enabled).apply()
     }
 
-    fun addDevice(
-        name: String,
-        macAddress: String,
-        ipAddress: String,
-        localIp: String,
-        port: Int,
-        secureOn: String?,
-        groupName: String = "",
-        shutdownType: String = "NONE",
-        shutdownPort: Int = 22,
-        shutdownUsername: String = "",
-        shutdownPassword: String = "",
-        shutdownCommand: String = "shutdown /s /t 0",
-        shutdownHttpUrl: String = ""
-    ) {
+    fun addDevice(device: DeviceEntity) {
         viewModelScope.launch {
-            val trimmedGroup = groupName.trim()
-            val entity = DeviceEntity(
-                name = name,
-                macAddress = macAddress,
-                ipAddress = ipAddress.trim(),
-                localIp = localIp.trim(),
-                port = if (port <= 0) 9 else port,
-                secureOnPassword = secureOn?.takeIf { it.isNotBlank() },
-                groupName = trimmedGroup,
-                shutdownType = shutdownType,
-                shutdownPort = shutdownPort,
-                shutdownUsername = shutdownUsername,
-                shutdownPassword = shutdownPassword,
-                shutdownCommand = shutdownCommand,
-                shutdownHttpUrl = shutdownHttpUrl
-            )
+            val trimmedGroup = device.groupName.trim()
+            val entity = device.copy(id = 0L, groupName = trimmedGroup)
             deviceDao.insertDevice(entity)
             if (trimmedGroup.isNotBlank()) {
                 addGroup(trimmedGroup)
@@ -293,9 +265,9 @@ class MainViewModel(
 
     fun refreshDeviceStatus(context: Context, device: DeviceEntity) {
         viewModelScope.launch {
-            _deviceStatuses.update { it + (device.id to DeviceStatus.CHECKING) }
-            val status = DeviceStatusChecker.checkStatus(context, device)
-            _deviceStatuses.update { it + (device.id to status) }
+            _deviceStatuses.update { it + (device.id to StatusResult.CHECKING) }
+            val result = DeviceStatusChecker.checkStatus(context, device)
+            _deviceStatuses.update { it + (device.id to result) }
         }
     }
 
@@ -303,10 +275,10 @@ class MainViewModel(
         viewModelScope.launch {
             deviceList.forEach { dev ->
                 launch {
-                    val status = DeviceStatusChecker.checkStatus(context, dev)
+                    val result = DeviceStatusChecker.checkStatus(context, dev)
                     _deviceStatuses.update { current ->
-                        if (current[dev.id] != status) {
-                            current + (dev.id to status)
+                        if (current[dev.id] != result) {
+                            current + (dev.id to result)
                         } else {
                             current
                         }

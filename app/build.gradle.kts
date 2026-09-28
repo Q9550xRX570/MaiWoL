@@ -15,8 +15,8 @@ android {
         minSdk = 24
         targetSdk = 35
 
-        versionCode = 9
-        versionName = "2.2.3"
+        versionCode = 10
+        versionName = "2.2.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -70,6 +70,13 @@ android {
         compose = true
     }
 
+    packaging {
+        resources {
+            excludes += "META-INF/versions/*/OSGI-INF/MANIFEST.MF"
+            excludes += "org/bouncycastle/**"
+        }
+    }
+
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -88,6 +95,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     implementation("com.github.mwiede:jsch:0.2.20")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
@@ -100,4 +108,10 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.apache.sshd:sshd-core:2.14.0")
+    testImplementation("net.i2p.crypto:eddsa:0.3.0")
+    testImplementation("org.slf4j:slf4j-nop:1.7.36")
+
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
 }

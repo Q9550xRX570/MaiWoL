@@ -21,5 +21,9 @@ data class DeviceEntity(
     val shutdownUsername: String = "",
     val shutdownPassword: String = "",
     val shutdownCommand: String = "shutdown /s /f /t 0",
-    val shutdownHttpUrl: String = ""
+    val shutdownHttpUrl: String = "",
+    // SSH kimlik doğrulama: "PASSWORD" veya "KEY"
+    val sshAuthType: String = "PASSWORD",
+    val sshPrivateKey: String = "",
+    val sshKeyPassphrase: String = ""
 )

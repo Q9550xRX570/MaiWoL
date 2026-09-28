@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mai.wol.data.AppDatabase
 import com.mai.wol.network.WolManager
+import com.mai.wol.ui.lock.LockIconWithCenterDot
 import com.mai.wol.ui.theme.MaiWoLTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

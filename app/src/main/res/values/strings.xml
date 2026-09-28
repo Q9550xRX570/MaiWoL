@@ -240,4 +240,33 @@
     <string name="app_version">App Version</string>
     <string name="universal_arch">Universal</string>
     <string name="arm64_recommended">ARM64 v8A recommended</string>
+
+    <string name="reason_ssh_banner">SSH answered on port %1$s</string>
+    <string name="reason_service_port">Service port %1$s answered</string>
+    <string name="reason_ping_reply">Ping reply</string>
+    <string name="reason_wan_port">Forwarded port %1$s answered</string>
+    <string name="reason_same_subnet_silent">Same network, no reply</string>
+    <string name="reason_no_route">Not on the same network</string>
+
+    <string name="connection_check">Connection Check</string>
+    <string name="connection_check_desc">Checks whether this computer is really on, off or unreachable. Works even if remote shutdown is disabled.</string>
+    <string name="check_now">Check Now</string>
+    <string name="checking_now">Checking…</string>
+
+    <string name="ssh_auth_method">SSH Sign-in</string>
+    <string name="ssh_auth_password">Password</string>
+    <string name="ssh_auth_key">Key File</string>
+    <string name="ssh_key_select">Choose Key File</string>
+    <string name="ssh_key_change">Change Key File</string>
+    <string name="ssh_key_loaded">%1$s key loaded</string>
+    <string name="ssh_key_loaded_encrypted">%1$s key loaded (password protected)</string>
+    <string name="ssh_key_invalid">This file is not a valid SSH private key</string>
+    <string name="ssh_key_read_error">The file could not be read</string>
+    <string name="ssh_key_formats">OpenSSH, PEM and PuTTY (.ppk) keys are accepted, whatever the file extension.</string>
+    <string name="ssh_key_passphrase">Key Passphrase (if any)</string>
+    <string name="ssh_test">Test SSH Sign-in</string>
+    <string name="ssh_test_ok">SSH sign-in works (%1$s)</string>
+    <string name="ssh_test_fail">SSH failed: %1$s</string>
+    <string name="ssh_continue_hint">Want to shut this computer down remotely too? Choose SSH below.</string>
+    <string name="ssh_continue">Continue with SSH</string>
 </resources>

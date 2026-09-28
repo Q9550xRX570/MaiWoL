@@ -1,6 +1,8 @@
 MaiWoL, yerel ağınızdaki (LAN) veya internet üzerindeki (WAN / DDNS) bilgisayar ve sunucularınızı tek dokunuşla uyandırmanızı ve güvenle kapatmanızı sağlayan modern, güvenli ve %100 açık kaynaklı (FOSS) bir Wake-on-LAN ve Güç Yönetimi uygulamasıdır.
 
-v2.2.0 ile Öne Çıkan Özellikler:
+2.2.4'te yeni: Açık etiketi artık gerçek kanıt istiyor (SSH banner'ı, bir Windows hizmeti ya da ping yanıtı) ve kart nedenini gösteriyor. Ekle/Düzenle'de uzaktan kapatma kapalıyken de çalışan Bağlantı Kontrolü var. SSH, Ed25519 ve PuTTY .ppk dahil her uzantılı anahtar dosyasıyla giriş yapabilir ve kapatmadan test edilebilir. Uyandırma paketleri yerel yayın adresine de gider. Android yedeği artık cihaz veritabanını ve uygulama PIN'ini içermez. GitHub yayınında arm64-v8a, armeabi-v7a, x86_64 ve evrensel APK vardır. F-Droid evrensel paketi yayınlar.
+
+Özellikler:
 • Uzaktan Bilgisayar Kapatma: Güvenli OpenSSH ve HTTP Webhook (GET / POST) ile bilgisayarları uzaktan tek dokunuşla kapatma veya kilitleme.
 • Zorla Kapatma (/f Parametresi): Takılan veya onay bekleyen pencereleri beklemeden %100 anında kapanmayı garanti eden komut motoru.
 • Akıllı LAN / WAN Yönlendirmesi: Evde Wi-Fi'dayken yerel IP'den, dışarıda mobil verideyken modem port yönlendirmesinden (WAN) otomatik bağlanan çift yönlü altyapı.

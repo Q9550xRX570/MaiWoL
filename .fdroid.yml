@@ -1,0 +1,20 @@
+License: GPL-3.0-only
+Categories:
+  - System
+SourceCode: https://github.com/Q9550xRX570/MaiWoL
+IssueTracker: https://github.com/Q9550xRX570/MaiWoL/issues
+Changelog: https://github.com/Q9550xRX570/MaiWoL/releases
+
+Builds:
+  - versionName: '2.2.4'
+    versionCode: 10
+    commit: v2.2.4
+    subdir: app
+    gradle:
+      - yes
+    output: build/outputs/apk/release/*-universal.apk
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: '2.2.4'
+CurrentVersionCode: 10

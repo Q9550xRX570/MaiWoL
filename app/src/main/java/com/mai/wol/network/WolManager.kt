@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import java.net.NetworkInterface
 
 object WolManager {
 
@@ -21,48 +22,13 @@ object WolManager {
         secureOnPassword: String? = null,
         packetCount: Int = 1
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        val cleanMac = macAddress.replace(HEX_CLEAN_REGEX, "")
-        if (cleanMac.length != 12) {
-            return@withContext Result.failure(IllegalArgumentException("Geçersiz MAC adresi. 12 haneli hex olmalıdır."))
+        val bytes = try {
+            buildMagicPacket(macAddress, secureOnPassword)
+        } catch (e: IllegalArgumentException) {
+            return@withContext Result.failure(e)
         }
 
-        val macBytes = ByteArray(6)
-        for (i in 0 until 6) {
-            val idx = i * 2
-            macBytes[i] = cleanMac.substring(idx, idx + 2).toInt(16).toByte()
-        }
-
-        val secureOnBytes = secureOnPassword?.takeIf { it.isNotBlank() }?.let { pwd ->
-            val cleanPwd = pwd.replace(HEX_CLEAN_REGEX, "")
-            if (cleanPwd.length == 12) {
-                ByteArray(6).apply {
-                    for (i in 0 until 6) {
-                        val idx = i * 2
-                        this[i] = cleanPwd.substring(idx, idx + 2).toInt(16).toByte()
-                    }
-                }
-            } else null
-        }
-
-        val packetSize = 6 + (16 * 6) + (secureOnBytes?.size ?: 0)
-        val bytes = ByteArray(packetSize)
-
-        for (i in 0..5) {
-            bytes[i] = 0xFF.toByte()
-        }
-
-        for (i in 6 until 102 step 6) {
-            System.arraycopy(macBytes, 0, bytes, i, 6)
-        }
-
-        secureOnBytes?.let {
-            System.arraycopy(it, 0, bytes, 102, 6)
-        }
-
-        val targets = listOfNotNull(
-            ipAddress.trim().takeIf { it.isNotBlank() },
-            localIp.trim().takeIf { it.isNotBlank() && it != ipAddress.trim() }
-        ).distinct()
+        val targets = resolveWakeTargets(ipAddress, localIp, localBroadcastTargets())
 
         if (targets.isEmpty()) {
             return@withContext Result.failure(Exception("Gönderilecek geçerli hedef IP/Adres girilmedi."))
@@ -85,6 +51,81 @@ object WolManager {
             val errorMsg = results.mapNotNull { it.exceptionOrNull()?.message }.joinToString("; ")
             Result.failure(Exception("Paket gönderilemedi: $errorMsg"))
         }
+    }
+
+    internal fun buildMagicPacket(macAddress: String, secureOnPassword: String?): ByteArray {
+        val cleanMac = macAddress.replace(HEX_CLEAN_REGEX, "")
+        if (cleanMac.length != 12) {
+            throw IllegalArgumentException("Geçersiz MAC adresi. 12 haneli hex olmalıdır.")
+        }
+
+        val macBytes = ByteArray(6)
+        for (i in 0 until 6) {
+            val idx = i * 2
+            macBytes[i] = cleanMac.substring(idx, idx + 2).toInt(16).toByte()
+        }
+
+        val secureOnBytes = secureOnPassword?.takeIf { it.isNotBlank() }?.let { pwd ->
+            val cleanPwd = pwd.replace(HEX_CLEAN_REGEX, "")
+            if (cleanPwd.length == 12) {
+                ByteArray(6).apply {
+                    for (i in 0 until 6) {
+                        val idx = i * 2
+                        this[i] = cleanPwd.substring(idx, idx + 2).toInt(16).toByte()
+                    }
+                }
+            } else {
+                null
+            }
+        }
+
+        val packetSize = 6 + (16 * 6) + (secureOnBytes?.size ?: 0)
+        val bytes = ByteArray(packetSize)
+
+        for (i in 0..5) {
+            bytes[i] = 0xFF.toByte()
+        }
+
+        for (i in 6 until 102 step 6) {
+            System.arraycopy(macBytes, 0, bytes, i, 6)
+        }
+
+        secureOnBytes?.let {
+            System.arraycopy(it, 0, bytes, 102, 6)
+        }
+
+        return bytes
+    }
+
+    internal fun resolveWakeTargets(
+        ipAddress: String,
+        localIp: String,
+        broadcasts: List<String>
+    ): List<String> {
+        val configured = listOfNotNull(
+            ipAddress.trim().takeIf { it.isNotBlank() },
+            localIp.trim().takeIf { it.isNotBlank() && it != ipAddress.trim() }
+        )
+        val broadcastTargets = broadcasts.map { it.trim() }.filter { it.isNotBlank() }
+        return (configured + broadcastTargets).distinct()
+    }
+
+    private fun localBroadcastTargets(): List<String> {
+        val targets = linkedSetOf("255.255.255.255")
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return targets.toList()
+            while (interfaces.hasMoreElements()) {
+                val networkInterface = interfaces.nextElement()
+                if (!networkInterface.isUp || networkInterface.isLoopback) continue
+                for (address in networkInterface.interfaceAddresses) {
+                    val host = address.broadcast?.hostAddress ?: continue
+                    if (host.contains(':')) continue
+                    targets.add(host)
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return targets.toList()
     }
 
     private suspend fun sendToHost(
