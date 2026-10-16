@@ -6,7 +6,7 @@ Wake a computer from your phone. The magic packet goes from your phone to your n
   <a href="https://maiwol.com"><img src="https://img.shields.io/badge/Website-maiwol.com-0284C7?style=for-the-badge" alt="Website"></a>
   <a href="https://github.com/Q9550xRX570/MaiWoL/releases/tag/v2.2.5"><img src="https://img.shields.io/badge/Release-v2.2.5-38BDF8?style=for-the-badge" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-2563EB?style=for-the-badge" alt="GPL-3.0"></a>
-  <a href="https://www.virustotal.com/gui/file/3b6ee5501f9af73f6f1c9982842ff9cfdc672041191df1bd1436e6eda9737a3e"><img src="https://img.shields.io/badge/VirusTotal-0%2F67_Clean-10B981?style=for-the-badge" alt="VirusTotal"></a>
+  <a href="https://www.virustotal.com/gui/file/5ef02a77970fe321e3d614996e22ddbe1ad916ac93b732d96637490cffef6303"><img src="https://img.shields.io/badge/VirusTotal-0%2F68_Clean-10B981?style=for-the-badge" alt="VirusTotal"></a>
 </p>
 
 ## What you can do
@@ -54,16 +54,14 @@ Nothing is sent to MaiWoL. There is no tracker SDK and no ad SDK. Sockets open o
 
 A PIN or fingerprint can lock the app and the widgets. The PIN is stored as a SHA-256 hash. Card fields can be shown, masked, or hidden. Android backup and device transfer skip the device database and the PIN. Your own export is separate: plain JSON, or a `.maiwol` file encrypted with AES-256-GCM.
 
-## Downloads
-
-Source version is 2.2.5. The files below are the last published binaries, v2.2.4, with their real checksums. Attach the new APKs to the v2.2.5 release before replacing this table.
+## Downloads (v2.2.5)
 
 | Phone | File | SHA-256 | VirusTotal |
 | :--- | :--- | :--- | :--- |
-| Most phones (arm64) | [MaiWoL-v2.2.4-arm64-v8a.apk](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.4/MaiWoL-v2.2.4-arm64-v8a.apk) | `5ce9740ae8bb4a15a5c69a0c61a96957c7679980199076d0766cfd6a70612fa7` | [0/68](https://www.virustotal.com/gui/file/5ce9740ae8bb4a15a5c69a0c61a96957c7679980199076d0766cfd6a70612fa7) |
-| Any phone (universal) | [MaiWoL-v2.2.4-universal.apk](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.4/MaiWoL-v2.2.4-universal.apk) | `3b6ee5501f9af73f6f1c9982842ff9cfdc672041191df1bd1436e6eda9737a3e` | [0/67](https://www.virustotal.com/gui/file/3b6ee5501f9af73f6f1c9982842ff9cfdc672041191df1bd1436e6eda9737a3e) |
-| Older 32-bit phones | [MaiWoL-v2.2.4-armeabi-v7a.apk](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.4/MaiWoL-v2.2.4-armeabi-v7a.apk) | `16a1d6f948c7246ffbbc27963bff16b5c1f9380aed3c224b70c43a4a867e360c` | [0/68](https://www.virustotal.com/gui/file/16a1d6f948c7246ffbbc27963bff16b5c1f9380aed3c224b70c43a4a867e360c) |
-| Emulator and Android PC | [MaiWoL-v2.2.4-x86_64.apk](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.4/MaiWoL-v2.2.4-x86_64.apk) | `65ce39e01c46b5257b327bb19b70763deb8b395074f4caeda4b50f4744ec3f4f` | [0/68](https://www.virustotal.com/gui/file/65ce39e01c46b5257b327bb19b70763deb8b395074f4caeda4b50f4744ec3f4f) |
+| Most phones (arm64) | [MaiWoL-v2.2.5-arm64-v8a.apk](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.5/MaiWoL-v2.2.5-arm64-v8a.apk) | `a29ea5ac892879cf38003e2f7ea13fcfde4fa3661117246fe82fe330927cd7bb` | [0/68](https://www.virustotal.com/gui/file/a29ea5ac892879cf38003e2f7ea13fcfde4fa3661117246fe82fe330927cd7bb) |
+| Any phone (universal) | [MaiWoL-v2.2.5-universal.apk](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.5/MaiWoL-v2.2.5-universal.apk) | `5ef02a77970fe321e3d614996e22ddbe1ad916ac93b732d96637490cffef6303` | [0/68](https://www.virustotal.com/gui/file/5ef02a77970fe321e3d614996e22ddbe1ad916ac93b732d96637490cffef6303) |
+| Older 32-bit phones | [MaiWoL-v2.2.5-armeabi-v7a.apk](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.5/MaiWoL-v2.2.5-armeabi-v7a.apk) | `686865983c473f427b2cfe6e05b4d52860e0622c8685ba57ef00f15604ead76c` | [0/68](https://www.virustotal.com/gui/file/686865983c473f427b2cfe6e05b4d52860e0622c8685ba57ef00f15604ead76c) |
+| Emulator and Android PC | [MaiWoL-v2.2.5-x86_64.apk](https://github.com/Q9550xRX570/MaiWoL/releases/download/v2.2.5/MaiWoL-v2.2.5-x86_64.apk) | `ed593c97b2e204cf3b2476228ab48e4adbbc5058abc2b6db5cf36166261a66c9` | [0/67](https://www.virustotal.com/gui/file/ed593c97b2e204cf3b2476228ab48e4adbbc5058abc2b6db5cf36166261a66c9) |
 
 F-Droid metadata is in the repo. The app is not in the F-Droid catalog yet. Play is in closed testing: [join the testers](https://groups.google.com/g/maiwol-testers), [opt in](https://play.google.com/apps/testing/com.mai.wol), then [open the store page](https://play.google.com/store/apps/details?id=com.mai.wol).
 
