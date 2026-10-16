@@ -45,7 +45,7 @@ class DatabaseMigrationTest {
     @Test
     fun upgradeFromVersion6KeepsDevicesAndSchedules() = runBlocking {
         val database = Room.databaseBuilder(context, AppDatabase::class.java, dbName)
-            .addMigrations(AppDatabase.MIGRATION_6_7)
+            .addMigrations(AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8)
             .build()
 
         val devices = database.deviceDao().getAllDevices().first()
@@ -60,6 +60,7 @@ class DatabaseMigrationTest {
         assertEquals("PASSWORD", device.sshAuthType)
         assertEquals("", device.sshPrivateKey)
         assertEquals("", device.sshKeyPassphrase)
+        assertEquals(0, device.tcpPort)
         assertEquals(1, schedules.size)
         assertEquals(1L, schedules.single().deviceId)
     }

@@ -9,14 +9,20 @@ android {
     namespace = "com.mai.wol"
     compileSdk = 35
 
+    val appVersionName = "2.2.5"
+    val octoberEdition = "16 October Edition"
+    val ekimEdition = "16 Ekim Edition"
+
     defaultConfig {
         applicationId = "com.mai.wol"
 
         minSdk = 24
         targetSdk = 35
 
-        versionCode = 10
-        versionName = "2.2.4"
+        versionCode = 11
+        versionName = appVersionName
+        resValue("string", "version_edition", "v$appVersionName $octoberEdition")
+        resValue("string", "version_edition_tr", "v$appVersionName $ekimEdition")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

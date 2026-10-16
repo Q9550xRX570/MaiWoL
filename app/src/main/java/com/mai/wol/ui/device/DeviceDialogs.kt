@@ -57,6 +57,7 @@ fun AddOrEditDeviceDialog(
     var ip by remember { mutableStateOf(deviceToEdit?.ipAddress ?: "") }
     var localIp by remember { mutableStateOf(deviceToEdit?.localIp ?: "") }
     var portText by remember { mutableStateOf(deviceToEdit?.port?.toString() ?: "9") }
+    var tcpPortText by remember { mutableStateOf(deviceToEdit?.tcpPort?.takeIf { it > 0 }?.toString() ?: "") }
     var secureOn by remember { mutableStateOf(deviceToEdit?.secureOnPassword ?: "") }
     var groupName by remember { mutableStateOf(deviceToEdit?.groupName ?: defaultGroup) }
 
@@ -130,6 +131,7 @@ fun AddOrEditDeviceDialog(
             ipAddress = ip.trim(),
             localIp = localIp.trim(),
             port = portText.toIntOrNull()?.takeIf { it > 0 } ?: 9,
+            tcpPort = tcpPortText.toIntOrNull()?.takeIf { it in 1..65535 } ?: 0,
             secureOnPassword = secureOn.trim().ifBlank { null },
             groupName = groupName.trim(),
             shutdownType = shutdownType,
@@ -238,6 +240,19 @@ fun AddOrEditDeviceDialog(
                     text = stringResource(R.string.connection_check_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                OutlinedTextField(
+                    value = tcpPortText,
+                    onValueChange = {
+                        tcpPortText = it.filter { ch -> ch.isDigit() }.take(5)
+                        checkResult = null
+                    },
+                    label = { Text(stringResource(R.string.tcp_port_optional)) },
+                    placeholder = { Text(stringResource(R.string.tcp_port_hint)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedButton(

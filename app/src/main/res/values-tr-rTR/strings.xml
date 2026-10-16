@@ -241,15 +241,10 @@
     <string name="universal_arch">Evrensel</string>
     <string name="arm64_recommended">ARM64 v8A önerilir</string>
 
-    <string name="reason_ssh_banner">SSH %1$s portunda yanıt verdi</string>
-    <string name="reason_service_port">Hizmet portu %1$s yanıt verdi</string>
-    <string name="reason_ping_reply">Ping yanıtı geldi</string>
-    <string name="reason_wan_port">Yönlendirilen port %1$s yanıt verdi</string>
-    <string name="reason_same_subnet_silent">Aynı ağda, yanıt yok</string>
-    <string name="reason_no_route">Aynı ağda değil</string>
-
     <string name="connection_check">Bağlantı Kontrolü</string>
-    <string name="connection_check_desc">Bu bilgisayarın gerçekten açık, kapalı ya da ulaşılamaz olduğunu kontrol eder. Uzaktan kapatma kapalı olsa bile çalışır.</string>
+    <string name="connection_check_desc">TCP portu yazarsan kontrol o porttan yapılır. Boş bırakırsan bilgisayardan normal bir cevap aranır. Kart açık, kapalı ya da ulaşılamadı der. Uzaktan kapatma kapalı olsa da çalışır.</string>
+    <string name="tcp_port_optional">TCP Portu (isteğe bağlı)</string>
+    <string name="tcp_port_hint">445, 22, 3389…</string>
     <string name="check_now">Şimdi Kontrol Et</string>
     <string name="checking_now">Kontrol ediliyor…</string>
 

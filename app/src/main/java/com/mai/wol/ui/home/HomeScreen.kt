@@ -794,7 +794,6 @@ fun HomeScreen(
                                                             context.getString(R.string.packet_sent_error, error ?: "")
                                                         }
                                                         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                                        viewModel.refreshDeviceStatus(context, device)
                                                     }
                                                 },
                                                 onSendShutdown = {
@@ -932,7 +931,6 @@ fun HomeScreen(
                                                 context.getString(R.string.packet_sent_error, "Hata")
                                             }
                                             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                            viewModel.checkAllDevicesStatus(context, targetDevices)
                                         }
                                     }
                                 ) {

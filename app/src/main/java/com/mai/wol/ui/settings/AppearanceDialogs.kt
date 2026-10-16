@@ -311,7 +311,7 @@ fun PacketCountSettingsDialog(
     var showManualInput by remember { mutableStateOf(false) }
 
     AlertDialog(
-        onDismissRequest = { onConfirm(tempCount) },
+        onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.packet_count_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -413,10 +413,7 @@ fun ManualPacketCountDialog(
     var textValue by remember { mutableStateOf(currentCount.toString()) }
 
     AlertDialog(
-        onDismissRequest = {
-            val count = textValue.toIntOrNull() ?: currentCount
-            onConfirm(count)
-        },
+        onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.enter_packet_count)) },
         text = {
             Column {

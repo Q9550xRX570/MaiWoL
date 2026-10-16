@@ -1,0 +1,1 @@
+Kart açık, kapalı ya da ulaşılamadı der. Paket sayısı yerel ağa gider. WAN adresi kayıtlıysa aynı sayı oraya da gider.

@@ -1,22 +1,21 @@
-MaiWoL, yerel ağınızdaki (LAN) veya internet üzerindeki (WAN / DDNS) bilgisayar ve sunucularınızı tek dokunuşla uyandırmanızı ve güvenle kapatmanızı sağlayan modern, güvenli ve %100 açık kaynaklı (FOSS) bir Wake-on-LAN ve Güç Yönetimi uygulamasıdır.
+MaiWoL, bilgisayarı telefondan uyandırır. Sihirli paket telefondan senin ağına gider. Arada hesap, reklam ve izleyici yoktur.
 
-2.2.4'te yeni: Açık etiketi artık gerçek kanıt istiyor (SSH banner'ı, bir Windows hizmeti ya da ping yanıtı) ve kart nedenini gösteriyor. Ekle/Düzenle'de uzaktan kapatma kapalıyken de çalışan Bağlantı Kontrolü var. SSH, Ed25519 ve PuTTY .ppk dahil her uzantılı anahtar dosyasıyla giriş yapabilir ve kapatmadan test edilebilir. Uyandırma paketleri yerel yayın adresine de gider. Android yedeği artık cihaz veritabanını ve uygulama PIN'ini içermez. GitHub yayınında arm64-v8a, armeabi-v7a, x86_64 ve evrensel APK vardır. F-Droid evrensel paketi yayınlar.
+2.2.5'te yeni: Kart açık, kapalı ya da ulaşılamadı der. Seçtiğin paket sayısı yerel ağa gider. WAN ya da DDNS adresi kayıtlıysa aynı sayı oraya da gider. Sürüm satırı 16 Ekim Edition yazar.
 
-Özellikler:
-• Uzaktan Bilgisayar Kapatma: Güvenli OpenSSH ve HTTP Webhook (GET / POST) ile bilgisayarları uzaktan tek dokunuşla kapatma veya kilitleme.
-• Zorla Kapatma (/f Parametresi): Takılan veya onay bekleyen pencereleri beklemeden %100 anında kapanmayı garanti eden komut motoru.
-• Akıllı LAN / WAN Yönlendirmesi: Evde Wi-Fi'dayken yerel IP'den, dışarıda mobil verideyken modem port yönlendirmesinden (WAN) otomatik bağlanan çift yönlü altyapı.
-• Şifre Göster/Gizle Butonu: SSH ve Webhook şifrelerini girerken doğrulamayı kolaylaştıran göz ikonu.
-• Sürüklenebilir Grup Sekmeleri: Bilgisayarları kategorilere ayırma, basılı tutup sürükleyerek sıralama ve grup sayı rozetlerini gizleme seçeneği.
-• Tek Dokunuşla Toplu Uyandırma: Seçili gruptaki tüm cihazları 80 ms kademeli gecikmeyle aynı anda uyandıran üst bar butonu.
-• Güçlü WoL Motoru: Çoklu paket gönderimi (1-20 adet) ve SecureOn 6-bayt şifre desteği.
-• Ana Ekran Widget'ları: 2x1 Kompakt Kart ve 1x1 Hızlı Uyandırma simgesi (PIN/Biyometrik kilit koruması).
-• Hızlı Ayarlar Bildirim Butonu (Tile): Bildirim çekmecesinden tek dokunuşla bilgisayar açma.
-• Dinamik Uygulama Kısayolları: Uygulama simgesine basılı tutarak hızlı uyandırma.
-• Güvenli Yedekleme (.maiwol v3): Kapatma profillerini de içeren AES-256 PIN şifreli veya düz metin cihaz/zamanlama yedekleme ve geri yükleme.
-• Canlı Durum Takibi: ICMP ping ve işletim sistemi servis portları (SMB, RPC, RDP, SSH) ile anlık açık/kapalı kontrolü.
-• Banka Seviyesi Güvenlik: SHA-256 PIN ve Biyometrik kilit, FLAG_SECURE ekran koruması.
-• Shizuku Entegrasyonu: Ağ taramasında MAC adreslerini root'suz otomatik okuma.
-• Dahili ve Harici Otomasyon: Belirli tarih/saat veya haftalık zamanlayıcılar; Tasker, MacroDroid ve ADB intent desteği.
-• Dahili Ağ Araçları: DNS Sorgu ve Canlı Ping/Gecikme testi terminali.
-• %100 Gizlilik: Sıfır reklam, sıfır Google izleyicisi, sıfır telemetri.
+Neler var:
+• Bir bilgisayarı ya da bir gruptakilerin hepsini uyandırma
+• Seçilen paket sayısını yerel ağa, WAN ya da DDNS kayıtlıysa bir kez daha oraya gönderme
+• İsteğe bağlı SecureOn parolası
+• Açık, kapalı ya da ulaşılamadı
+• İstersen SSH ya da HTTP webhook ile kapatma
+• SSH'ye parola ya da anahtar dosyasıyla girme ve önce deneme
+• Ana ekran widget'ları, Hızlı Ayarlar karosu ve başlatıcı kısayolları
+• Tek seferlik ya da haftalık alarm. Telefon yeniden açılınca alarmlar geri gelir
+• Tasker, MacroDroid ve adb intent'leri
+• Sırasını değiştirebildiğin gruplar
+• Uygulama ve widget için isteğe bağlı PIN ya da parmak izi
+• Kartta MAC, IP ve portu gösterme, maskeleme ya da gizleme
+• Kendi yedeğin: düz JSON ya da şifreli .maiwol dosyası
+• DNS sorgusu, ping ve root'suz MAC için isteğe bağlı Shizuku taraması
+
+MaiWoL eve haber vermez.

@@ -1,7 +1,6 @@
 package com.mai.wol.ui.settings
 
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -10,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import java.util.zip.ZipFile
 
@@ -112,29 +112,28 @@ fun StatisticsDialog(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = stringResource(R.string.app_version),
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Column(horizontalAlignment = Alignment.End) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = appVersionInfo,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.End
+                    )
+                    if (recommendationText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = appVersionInfo,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
+                            text = recommendationText,
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.End
                         )
-                        if (recommendationText.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = recommendationText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
             }
@@ -148,17 +147,6 @@ fun StatisticsDialog(
 }
 
 fun getAppVersionAndRecommendation(context: Context): Pair<String, String> {
-    val versionName = try {
-        val pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
-        } else {
-            context.packageManager.getPackageInfo(context.packageName, 0)
-        }
-        pInfo.versionName ?: "2.2.4"
-    } catch (_: Exception) {
-        "2.2.4"
-    }
-
     val rawArch = detectApkArchitecture(context)
     val formattedArch = when (rawArch) {
         "arm64-v8a" -> "ARM64 v8A"
@@ -174,12 +162,18 @@ fun getAppVersionAndRecommendation(context: Context): Pair<String, String> {
     val isNotArm64Build = rawArch != "arm64-v8a"
 
     val recommendation = if (isNativeArm64Device && isNotArm64Build) {
-        context.getString(R.string.arm64_recommended)
+        "$formattedArch\n${context.getString(R.string.arm64_recommended)}"
     } else {
-        ""
+        formattedArch
     }
 
-    return Pair("v$versionName - $formattedArch", recommendation)
+    val edition = if (context.resources.configuration.locales[0].language == "tr") {
+        context.getString(R.string.version_edition_tr)
+    } else {
+        context.getString(R.string.version_edition)
+    }
+
+    return Pair(edition, recommendation)
 }
 
 private fun detectApkArchitecture(context: Context): String {

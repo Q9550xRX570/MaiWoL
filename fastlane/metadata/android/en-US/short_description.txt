@@ -1,1 +1,1 @@
-Modern, privacy-focused, and 100% FOSS Wake-on-LAN application
+Wake a computer from your phone. No account, no ads.

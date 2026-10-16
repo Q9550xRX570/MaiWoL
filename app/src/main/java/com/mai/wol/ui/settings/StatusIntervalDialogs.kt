@@ -29,7 +29,7 @@ fun StatusIntervalSettingsDialog(
     var showManualInput by remember { mutableStateOf(false) }
 
     AlertDialog(
-        onDismissRequest = { onConfirm(if (isEnabled) tempInterval else 0) },
+        onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.enter_interval_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -155,10 +155,7 @@ fun ManualStatusIntervalDialog(
     var textValue by remember { mutableStateOf(currentInterval.toString()) }
 
     AlertDialog(
-        onDismissRequest = {
-            val interval = textValue.toIntOrNull() ?: currentInterval
-            onConfirm(interval)
-        },
+        onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.enter_interval_title)) },
         text = {
             Column {

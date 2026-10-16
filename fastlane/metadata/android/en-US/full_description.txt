@@ -1,24 +1,21 @@
-MaiWoL is a modern, enterprise-grade, lightweight, and 100% Free and Open Source (FOSS) Wake-on-LAN and Remote Power Management suite for Android.
+MaiWoL wakes a computer from your phone. The magic packet goes from the phone to your network. There is no account, no ad, and no tracker in between.
 
-What's new in 2.2.4: Online now requires real proof (an SSH banner, a Windows service or a ping reply) and the card shows why. Add/Edit has a Connection Check that works without remote shutdown. SSH can sign in with a key file of any extension, including Ed25519 and PuTTY .ppk, and can be tested without shutting down. Magic packets are also sent to the local network broadcast. Android backup no longer includes the device database or the app PIN. GitHub releases include arm64-v8a, armeabi-v7a, x86_64 and universal APKs. F-Droid publishes the universal build.
+What's new in 2.2.5: The card says on, off, or unreachable. The packet count you choose is sent on the local network, and the same count is sent to the WAN or DDNS address when one is saved. The version line reads 16 October Edition.
 
-Features:
-• Remote Shutdown Engine: Native OpenSSH terminal execution & HTTP Webhook (GET/POST) support for one-tap remote computer shutdown and locking
-• Forced Instant Halting: Integrated /f parameter ensuring guaranteed instant shutdown without hanging on unresponsive applications
-• Seamless LAN/WAN Dual-Routing: Auto-switches between local subnet on home Wi-Fi and port-forwarded WAN/DDNS endpoints on mobile data
-• Credential Visibility Toggle: Eye toggle for verifying masked SSH and Webhook passwords
-• Interactive Group Tabs: Reorderable group tabs with drag-and-drop customization and optional count badge hiding
-• One-Tap Batch Group Wake: Trigger Magic Packets to all machines in a category with stepped 80ms concurrency pacing
-• LAN Broadcast and WAN/DDNS Magic Packet dispatch with burst pacing (1-20 packets)
-• Enterprise SecureOn 6-byte password injection
-• 2x1 Card & 1x1 Quick Wake Home Screen Widgets (with optional PIN/Biometric lock)
-• Quick Settings Notification Shade Tile for instant device wake-ups
-• Dynamic App Launcher Shortcuts
-• AES-256 Encrypted & Plain Backup / Restore (.maiwol v3) with shutdown profiles
-• Multi-tier real-time status polling via ICMP & OS core ports (SMB, RPC, RDP, SSH)
-• Cryptographic SHA-256 PIN & Biometric App Lock with FLAG_SECURE protection
-• Shizuku / ADB integration for rootless MAC discovery
-• Precision Date/Time & Weekly Recurring Scheduling
-• Headless External automation (Tasker / MacroDroid / ADB intents)
-• Built-in DNS Resolver and Ping Latency Diagnostic Tools
-• 100% FOSS with zero trackers, zero telemetry, and zero advertisements.
+What it does:
+• Wake one computer, or every computer in a group
+• Send the chosen packet count on the local network, and again to WAN or DDNS when that address is saved
+• Optional SecureOn password
+• Show on, off, or unreachable
+• Shut down over SSH or an HTTP webhook, only if you turn that on
+• Sign in to SSH with a password or a key file, and test it first
+• Home screen widgets, a Quick Settings tile, and launcher shortcuts
+• One-shot or weekly alarms that come back after a reboot
+• Tasker, MacroDroid, and adb intents
+• Groups you can reorder
+• Optional PIN or fingerprint lock for the app and the widgets
+• Show, mask, or hide MAC, IP, and port on the cards
+• Your own backup: plain JSON, or an encrypted .maiwol file
+• DNS lookup, ping, and an optional Shizuku scan for MAC addresses without root
+
+MaiWoL does not phone home.

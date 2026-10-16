@@ -1,0 +1,1 @@
+The card says on, off, or unreachable. The packet count is sent on the local network and, when a WAN address is saved, the same count is sent there too.

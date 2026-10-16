@@ -9,6 +9,7 @@ import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.net.ServerSocket
 import kotlin.concurrent.thread
+import kotlinx.coroutines.runBlocking
 
 class SshKeyAndStatusTest {
 
@@ -98,6 +99,76 @@ class SshKeyAndStatusTest {
             }
             assertTrue(DeviceStatusChecker.readSshBanner("127.0.0.1", server.localPort, 2000))
         }
+    }
+
+    @Test
+    fun oneMissKeepsThePreviousStatus() {
+        val online = StatusResult(DeviceStatus.ONLINE, StatusReason.TCP_PORT, "445")
+        val offline = StatusResult(DeviceStatus.STANDBY, StatusReason.SAME_SUBNET_SILENT)
+        val unreachable = StatusResult(DeviceStatus.UNREACHABLE, StatusReason.NO_ROUTE)
+
+        val firstMiss = StatusResult.settle(online, offline, 0)
+        assertEquals(online, firstMiss.result)
+        assertEquals(1, firstMiss.pendingMisses)
+
+        val confirmed = StatusResult.settle(firstMiss.result, offline, firstMiss.pendingMisses)
+        assertEquals(offline, confirmed.result)
+        assertEquals(0, confirmed.pendingMisses)
+
+        val differentFailure = StatusResult.settle(offline, unreachable, 0)
+        assertEquals(offline, differentFailure.result)
+        assertEquals(unreachable, StatusResult.settle(offline, unreachable, 1).result)
+    }
+
+    @Test
+    fun onlineResultShowsImmediatelyAndClearsMisses() {
+        val udp = StatusResult(DeviceStatus.ONLINE, StatusReason.UDP_RESPONSE, "9")
+        val tcp = StatusResult(DeviceStatus.ONLINE, StatusReason.TCP_PORT, "445")
+        val offline = StatusResult(DeviceStatus.STANDBY, StatusReason.SAME_SUBNET_SILENT)
+
+        val upgraded = StatusResult.settle(udp, tcp, 1)
+        assertEquals(tcp, upgraded.result)
+        assertEquals(0, upgraded.pendingMisses)
+
+        val fromOffline = StatusResult.settle(offline, udp, 1)
+        assertEquals(udp, fromOffline.result)
+        assertEquals(offline, StatusResult.settle(null, offline, 4).result)
+        assertEquals(offline, StatusResult.settle(StatusResult.CHECKING, offline, 4).result)
+    }
+
+    @Test
+    fun tcpPortOpenOnlyWhenSomethingAccepts() = runBlocking {
+        ServerSocket(0).use { server ->
+            thread { runCatching { server.accept().close() } }
+            assertTrue(DeviceStatusChecker.isTcpOpen("127.0.0.1", server.localPort, 1000))
+        }
+        ServerSocket(0).use { server ->
+            val closed = server.localPort
+            server.close()
+            assertFalse(DeviceStatusChecker.isTcpOpen("127.0.0.1", closed, 500))
+        }
+    }
+
+    @Test
+    fun subnetFollowsThePhonePrefix() {
+        assertTrue(sameIpv4Subnet("192.168.1.10", "192.168.1.20", 24))
+        assertFalse(sameIpv4Subnet("192.168.1.10", "192.168.2.20", 24))
+        assertTrue(sameIpv4Subnet("10.0.0.5", "10.0.1.5", 16))
+        assertFalse(sameIpv4Subnet("10.0.0.5", "10.1.0.5", 16))
+        assertTrue(sameIpv4Subnet("192.168.1.1", "192.168.1.14", 28))
+        assertFalse(sameIpv4Subnet("192.168.1.1", "192.168.1.20", 28))
+        assertTrue(sameIpv4Subnet("192.168.1.8", "192.168.1.40", prefixForLanCompare(32)))
+    }
+
+    @Test
+    fun scanHostListStaysInsideThePrefix() {
+        val hosts = ipv4HostsInPrefix("192.168.1.10", 28)
+        assertEquals(14, hosts.size)
+        assertTrue(hosts.contains("192.168.1.1"))
+        assertTrue(hosts.contains("192.168.1.14"))
+        assertFalse(hosts.contains("192.168.1.0"))
+        assertFalse(hosts.contains("192.168.1.15"))
+        assertEquals(254, ipv4HostsInPrefix("10.0.2.15", 24).size)
     }
 
     @Test

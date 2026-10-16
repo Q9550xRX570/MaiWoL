@@ -15,11 +15,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mai.wol.data.DeviceEntity
 import com.mai.wol.network.DeviceStatus
-import com.mai.wol.network.StatusReason
 import com.mai.wol.network.StatusResult
 
 import com.mai.wol.R
@@ -284,17 +282,6 @@ fun maskWan(wan: String): String {
 }
 
 @Composable
-fun statusReasonText(result: StatusResult): String? = when (result.reason) {
-    StatusReason.SSH_BANNER -> stringResource(R.string.reason_ssh_banner, result.detail)
-    StatusReason.SERVICE_PORT -> stringResource(R.string.reason_service_port, result.detail)
-    StatusReason.PING_REPLY -> stringResource(R.string.reason_ping_reply)
-    StatusReason.WAN_PORT -> stringResource(R.string.reason_wan_port, result.detail)
-    StatusReason.SAME_SUBNET_SILENT -> stringResource(R.string.reason_same_subnet_silent)
-    StatusReason.NO_ROUTE -> stringResource(R.string.reason_no_route)
-    StatusReason.NOT_CHECKED -> null
-}
-
-@Composable
 fun DeviceStatusBadge(
     result: StatusResult,
     onRefresh: () -> Unit
@@ -348,15 +335,6 @@ fun DeviceStatusBadge(
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 color = textColor
             )
-            statusReasonText(result)?.let { reason ->
-                Text(
-                    text = " · $reason",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = textColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
         }
     }
 }

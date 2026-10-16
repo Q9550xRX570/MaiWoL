@@ -48,6 +48,7 @@ object BackupManager {
             dObj.put("ipAddress", dev.ipAddress)
             dObj.put("localIp", dev.localIp)
             dObj.put("port", dev.port)
+            dObj.put("tcpPort", dev.tcpPort)
             dObj.put("secureOnPassword", dev.secureOnPassword ?: "")
             dObj.put("groupName", dev.groupName)
             dObj.put("shutdownType", dev.shutdownType)
@@ -170,6 +171,7 @@ object BackupManager {
                     ipAddress = dObj.optString("ipAddress", ""),
                     localIp = dObj.optString("localIp", ""),
                     port = dObj.optInt("port", 9),
+                    tcpPort = dObj.optInt("tcpPort", 0),
                     secureOnPassword = dObj.optString("secureOnPassword", "").takeIf { it.isNotBlank() },
                     groupName = dObj.optString("groupName", ""),
                     shutdownType = dObj.optString("shutdownType", "NONE"),

@@ -44,17 +44,36 @@ class WolManagerTest {
     }
 
     @Test
-    fun wakeTargetsKeepSavedAddressesAndAddBroadcast() {
+    fun packetCountGoesOnceOnLanAndOnceOnWan() {
         val targets = WolManager.resolveWakeTargets(
             ipAddress = "home.example",
             localIp = "192.168.1.20",
-            broadcasts = listOf("255.255.255.255", "192.168.1.255", "192.168.1.20")
+            broadcasts = listOf("255.255.255.255", "192.168.1.255", "10.0.0.255")
         )
 
-        assertEquals(
-            listOf("home.example", "192.168.1.20", "255.255.255.255", "192.168.1.255"),
-            targets
+        assertEquals(listOf("192.168.1.255", "home.example"), targets)
+    }
+
+    @Test
+    fun wanFieldIsSentEvenWhenBothFieldsMatch() {
+        val targets = WolManager.resolveWakeTargets(
+            ipAddress = "88.1.2.3",
+            localIp = "88.1.2.3",
+            broadcasts = listOf("255.255.255.255")
         )
+
+        assertEquals(listOf("255.255.255.255", "88.1.2.3"), targets)
+    }
+
+    @Test
+    fun lanOnlyWakeDoesNotAddWan() {
+        val targets = WolManager.resolveWakeTargets(
+            ipAddress = "",
+            localIp = "192.168.1.20",
+            broadcasts = listOf("255.255.255.255", "192.168.1.255")
+        )
+
+        assertEquals(listOf("192.168.1.255"), targets)
     }
 
     @Test

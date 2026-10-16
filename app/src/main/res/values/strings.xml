@@ -241,15 +241,10 @@
     <string name="universal_arch">Universal</string>
     <string name="arm64_recommended">ARM64 v8A recommended</string>
 
-    <string name="reason_ssh_banner">SSH answered on port %1$s</string>
-    <string name="reason_service_port">Service port %1$s answered</string>
-    <string name="reason_ping_reply">Ping reply</string>
-    <string name="reason_wan_port">Forwarded port %1$s answered</string>
-    <string name="reason_same_subnet_silent">Same network, no reply</string>
-    <string name="reason_no_route">Not on the same network</string>
-
     <string name="connection_check">Connection Check</string>
-    <string name="connection_check_desc">Checks whether this computer is really on, off or unreachable. Works even if remote shutdown is disabled.</string>
+    <string name="connection_check_desc">Enter a TCP port to check that port. Leave it empty and MaiWoL looks for a normal reply from the computer. The card says on, off, or unreachable. This works even if remote shutdown is off.</string>
+    <string name="tcp_port_optional">TCP Port (optional)</string>
+    <string name="tcp_port_hint">445, 22, 3389…</string>
     <string name="check_now">Check Now</string>
     <string name="checking_now">Checking…</string>
 

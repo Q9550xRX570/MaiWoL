@@ -102,12 +102,41 @@ object WolManager {
         localIp: String,
         broadcasts: List<String>
     ): List<String> {
-        val configured = listOfNotNull(
-            ipAddress.trim().takeIf { it.isNotBlank() },
-            localIp.trim().takeIf { it.isNotBlank() && it != ipAddress.trim() }
-        )
-        val broadcastTargets = broadcasts.map { it.trim() }.filter { it.isNotBlank() }
-        return (configured + broadcastTargets).distinct()
+        val local = localIp.trim()
+        val wan = ipAddress.trim()
+        val cleanBroadcasts = broadcasts.map { it.trim() }.filter { it.isNotBlank() }
+        val privateAddress = listOf(local, wan).firstOrNull { isPrivateLanIp(it) }.orEmpty()
+        val lan = subnetBroadcast(privateAddress, cleanBroadcasts)
+        val targets = mutableListOf(lan)
+        if (wan.isNotBlank() && wan != lan) targets.add(wan)
+        if (isWanTarget(local) && local != lan) targets.add(local)
+        return targets.distinct()
+    }
+
+    private fun subnetBroadcast(privateAddress: String, broadcasts: List<String>): String {
+        if (isPrivateLanIp(privateAddress)) {
+            val network = privateAddress.substringBeforeLast('.')
+            broadcasts.firstOrNull { it.startsWith("$network.") && it.endsWith(".255") }?.let { return it }
+        }
+        return broadcasts.firstOrNull { it == "255.255.255.255" }
+            ?: broadcasts.firstOrNull()
+            ?: "255.255.255.255"
+    }
+
+    private fun isWanTarget(value: String): Boolean {
+        if (value.isBlank() || isPrivateLanIp(value)) return false
+        if (value == "255.255.255.255" || value.endsWith(".255")) return false
+        return true
+    }
+
+    private fun isPrivateLanIp(ip: String): Boolean {
+        val clean = ip.trim()
+        if (clean.startsWith("10.") || clean.startsWith("192.168.")) return true
+        if (clean.startsWith("172.")) {
+            val second = clean.split('.').getOrNull(1)?.toIntOrNull() ?: return false
+            return second in 16..31
+        }
+        return false
     }
 
     private fun localBroadcastTargets(): List<String> {
@@ -135,7 +164,9 @@ object WolManager {
         count: Int
     ): Result<Int> {
         return try {
-            val address = InetAddress.getByName(host)
+            val address = InetAddress.getAllByName(host)
+                .firstOrNull { it is java.net.Inet4Address }
+                ?: InetAddress.getByName(host)
             val packet = DatagramPacket(payload, payload.size, address, port)
 
             DatagramSocket().use { socket ->

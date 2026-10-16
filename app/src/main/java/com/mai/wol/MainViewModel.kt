@@ -15,13 +15,17 @@ import com.mai.wol.data.DeviceDao
 import com.mai.wol.data.DeviceEntity
 import com.mai.wol.data.ScheduleDao
 import com.mai.wol.data.ScheduleEntity
+import com.mai.wol.network.DeviceStatus
 import com.mai.wol.network.DeviceStatusChecker
+import com.mai.wol.network.SettledStatus
 import com.mai.wol.network.StatusResult
 import com.mai.wol.network.ShutdownManager
 import com.mai.wol.network.WolManager
 import com.mai.wol.widget.DeviceIconWidgetProvider
 import com.mai.wol.widget.DeviceWidgetProvider
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -112,6 +116,8 @@ class MainViewModel(
 
     private val _deviceStatuses = MutableStateFlow<Map<Long, StatusResult>>(emptyMap())
     val deviceStatuses: StateFlow<Map<Long, StatusResult>> = _deviceStatuses.asStateFlow()
+
+    private val wakeWatches = mutableSetOf<Long>()
 
     fun updateHideGroupCounts(hide: Boolean) {
         _hideGroupCounts.value = hide
@@ -255,6 +261,9 @@ class MainViewModel(
     }
 
     fun deleteDevice(device: DeviceEntity) {
+        statusJobs.remove(device.id)?.cancel()
+        statusMisses.remove(device.id)
+        wakeWatches.remove(device.id)
         viewModelScope.launch {
             deviceDao.deleteDevice(device)
             DeviceWidgetProvider.updateAllWidgets(appContext)
@@ -263,27 +272,65 @@ class MainViewModel(
         }
     }
 
+    private val statusJobs = mutableMapOf<Long, Job>()
+    private val statusMisses = mutableMapOf<Long, Int>()
+
     fun refreshDeviceStatus(context: Context, device: DeviceEntity) {
-        viewModelScope.launch {
-            _deviceStatuses.update { it + (device.id to StatusResult.CHECKING) }
-            val result = DeviceStatusChecker.checkStatus(context, device)
-            _deviceStatuses.update { it + (device.id to result) }
-        }
+        startStatusCheck(context, device, replace = true)
     }
 
     fun checkAllDevicesStatus(context: Context, deviceList: List<DeviceEntity>) {
-        viewModelScope.launch {
-            deviceList.forEach { dev ->
-                launch {
-                    val result = DeviceStatusChecker.checkStatus(context, dev)
-                    _deviceStatuses.update { current ->
-                        if (current[dev.id] != result) {
-                            current + (dev.id to result)
-                        } else {
-                            current
-                        }
+        deviceList.forEach { startStatusCheck(context, it, replace = false) }
+    }
+
+    private fun startStatusCheck(context: Context, device: DeviceEntity, replace: Boolean) {
+        if (!replace && device.id in wakeWatches) return
+        if (replace) wakeWatches.remove(device.id)
+        statusJobs[device.id]?.cancel()
+        statusJobs[device.id] = viewModelScope.launch {
+            if (replace) {
+                statusMisses[device.id] = 0
+                _deviceStatuses.update { it + (device.id to StatusResult.CHECKING) }
+            }
+            val result = DeviceStatusChecker.checkStatus(context, device)
+            if (!isActive) return@launch
+            val previous = _deviceStatuses.value[device.id]
+            val settled = if (replace) {
+                SettledStatus(result, 0)
+            } else {
+                StatusResult.settle(previous, result, statusMisses[device.id] ?: 0)
+            }
+            statusMisses[device.id] = settled.pendingMisses
+            _deviceStatuses.update { current ->
+                if (current[device.id] == settled.result) current else current + (device.id to settled.result)
+            }
+        }
+    }
+
+    private fun watchAfterWake(device: DeviceEntity) {
+        wakeWatches.add(device.id)
+        statusJobs[device.id]?.cancel()
+        statusMisses[device.id] = 0
+        statusJobs[device.id] = viewModelScope.launch {
+            try {
+                _deviceStatuses.update { it + (device.id to StatusResult.CHECKING) }
+                val pause = _statusCheckInterval.value.coerceAtLeast(1000).toLong()
+                var last = StatusResult(DeviceStatus.UNREACHABLE)
+                repeat(2) { attempt ->
+                    if (!isActive) return@launch
+                    last = DeviceStatusChecker.checkStatus(appContext, device)
+                    if (!isActive) return@launch
+                    if (last.status == DeviceStatus.ONLINE) {
+                        statusMisses[device.id] = 0
+                        _deviceStatuses.update { it + (device.id to last) }
+                        return@launch
                     }
+                    if (attempt == 0) delay(pause)
                 }
+                statusMisses[device.id] = 0
+                _deviceStatuses.update { it + (device.id to last) }
+            } finally {
+                wakeWatches.remove(device.id)
             }
         }
     }
@@ -345,6 +392,7 @@ class MainViewModel(
                         .putInt("total_packets_sent", newPackets)
                         .apply()
                     onResult(true, null)
+                    watchAfterWake(device)
                 },
                 onFailure = { onResult(false, it.message) }
             )
@@ -367,6 +415,7 @@ class MainViewModel(
             var successCount = 0
             var failCount = 0
 
+            val woke = mutableListOf<DeviceEntity>()
             deviceList.forEachIndexed { index, device ->
                 val result = WolManager.sendMagicPacket(
                     macAddress = device.macAddress,
@@ -377,7 +426,10 @@ class MainViewModel(
                     packetCount = currentPacketCount
                 )
                 result.fold(
-                    onSuccess = { successCount++ },
+                    onSuccess = {
+                        successCount++
+                        woke.add(device)
+                    },
                     onFailure = { failCount++ }
                 )
                 if (index < deviceList.size - 1) {
@@ -397,6 +449,7 @@ class MainViewModel(
             }
 
             onComplete(successCount, failCount)
+            woke.forEach { watchAfterWake(it) }
         }
     }
 
