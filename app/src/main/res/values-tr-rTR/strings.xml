@@ -203,6 +203,8 @@
     <string name="export_backup">Yedeği Dışa Aktar</string>
     <string name="import_backup">Yedeği İçe Aktar</string>
     <string name="backup_success">Yedek başarıyla kaydedildi</string>
+    <string name="backup_picker_missing">Bu telefonda dosya seçici yok. .maiwol dosyasını bir dosya yöneticisinden MaiWoL ile açın.</string>
+    <string name="backup_saved_to_downloads">Yedek İndirilenler klasörüne kaydedildi: %1$s</string>
     <string name="import_success">%1$d cihaz başarıyla içe aktarıldı</string>
     <string name="import_confirm_title">Yedeği İçe Aktar</string>
     <string name="import_confirm_desc">Bu dosyada %1$d adet cihaz ve %2$d adet zamanlayıcı bulundu. Listenize eklensin mi?</string>
@@ -250,14 +252,21 @@
 
     <string name="ssh_auth_method">SSH Girişi</string>
     <string name="ssh_auth_password">Şifre</string>
-    <string name="ssh_auth_key">Anahtar Dosyası</string>
-    <string name="ssh_key_select">Anahtar Dosyası Seç</string>
-    <string name="ssh_key_change">Anahtar Dosyasını Değiştir</string>
+    <string name="ssh_auth_key">Anahtar</string>
+    <string name="ssh_key_select">Dosya seç</string>
+    <string name="ssh_key_change">Dosyayı değiştir</string>
+    <string name="ssh_key_paste">Yapıştır</string>
+    <string name="ssh_key_paste_label">Özel anahtar</string>
     <string name="ssh_key_loaded">%1$s anahtarı yüklendi</string>
     <string name="ssh_key_loaded_encrypted">%1$s anahtarı yüklendi (parolalı)</string>
-    <string name="ssh_key_invalid">Bu dosya geçerli bir SSH özel anahtarı değil</string>
+    <string name="ssh_key_invalid">Bu geçerli bir SSH özel anahtarı değil</string>
+    <string name="ssh_key_public_not_private">Bu bir açık anahtar. -----BEGIN ile başlayan özel anahtarı yapıştırın.</string>
+    <string name="ssh_key_required">SSH özel anahtarını girin</string>
     <string name="ssh_key_read_error">Dosya okunamadı</string>
-    <string name="ssh_key_formats">Dosya uzantısı ne olursa olsun OpenSSH, PEM ve PuTTY (.ppk) anahtarları kabul edilir.</string>
+    <string name="ssh_key_too_large">Bu metin bir SSH özel anahtarı için çok uzun</string>
+    <string name="ssh_key_clipboard_empty">Pano boş</string>
+    <string name="ssh_key_picker_missing">Bu telefonda dosya seçici yok (DocumentsUI yüklü değil). Anahtar metnini aşağıya yapıştırın.</string>
+    <string name="ssh_key_formats">-----BEGIN ile başlayan metni yapıştırın veya dosya seçin. OpenSSH, PEM ve PuTTY (.ppk) kabul edilir.</string>
     <string name="ssh_key_passphrase">Anahtar Parolası (varsa)</string>
     <string name="ssh_test">SSH Girişini Test Et</string>
     <string name="ssh_test_ok">SSH girişi çalışıyor (%1$s)</string>

@@ -1,6 +1,6 @@
 MaiWoL wakes a computer from your phone. The magic packet goes from the phone to your network. There is no account, no ad, and no tracker in between.
 
-What's new in 2.2.5: The card says on, off, or unreachable. The packet count you choose is sent on the local network, and the same count is sent to the WAN or DDNS address when one is saved. The version line reads 16 October Edition.
+What's new in 2.2.6: SSH accepts a pasted private key, the block that starts with -----BEGIN, so sign-in works on phones that have no DocumentsUI file picker. Choosing a file still works when a picker exists. The version line reads 1 November Edition.
 
 What it does:
 • Wake one computer, or every computer in a group
@@ -8,7 +8,7 @@ What it does:
 • Optional SecureOn password
 • Show on, off, or unreachable
 • Shut down over SSH or an HTTP webhook, only if you turn that on
-• Sign in to SSH with a password or a key file, and test it first
+• Sign in to SSH with a password or a private key (paste the -----BEGIN text, or choose a file), and test it first
 • Home screen widgets, a Quick Settings tile, and launcher shortcuts
 • One-shot or weekly alarms that come back after a reboot
 • Tasker, MacroDroid, and adb intents

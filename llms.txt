@@ -5,7 +5,7 @@
 MaiWoL wakes devices with UDP Magic Packets (with optional SecureOn password),
 verifies whether they came online through ICMP ping and common service-port
 checks (SMB 445, RPC 135, NetBIOS 139, RDP 3389, WSD 5357, SSH 22), and can
-send them back to sleep or shut down via SSH commands or HTTP webhooks.
+send them back to sleep or shut down via SSH commands (a password or a pasted private key) or HTTP webhooks. Phones without DocumentsUI can paste the key text that starts with -----BEGIN.
 
 ## Core features
 

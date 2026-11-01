@@ -1,11 +1,16 @@
 package com.mai.wol.data
 
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.security.SecureRandom
@@ -208,6 +213,42 @@ object BackupManager {
             }
 
             BackupData(devicesList, schedulesList)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * Used when the system save dialog cannot open because DocumentsUI is missing.
+     * Returns a short location the UI can show.
+     */
+    fun writeToDownloads(context: Context, fileName: String, content: String): String? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: return null
+                val wrote = writeStringToUri(context, uri, content)
+                val done = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }
+                context.contentResolver.update(uri, done, null, null)
+                if (!wrote) {
+                    context.contentResolver.delete(uri, null, null)
+                    null
+                } else {
+                    fileName
+                }
+            } else {
+                val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: return null
+                val file = File(dir, fileName)
+                file.writeText(content)
+                file.absolutePath
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null

@@ -1,0 +1,1 @@
+SSH private keys can be pasted as text, including the block that starts with -----BEGIN. Sign-in works on phones that have no DocumentsUI file picker. Choosing a file still works when a picker exists. If the system save dialog is missing, a backup is written to Downloads.

@@ -1,5 +1,6 @@
 package com.mai.wol.ui.backup
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
 
 import com.mai.wol.R
 import com.mai.wol.MainViewModel
+import com.mai.wol.ui.DocumentLaunch
 
 @Composable
 fun BackupAndRestoreDialog(
@@ -35,6 +37,17 @@ fun BackupAndRestoreDialog(
     var showExportOptionsDialog by remember { mutableStateOf(false) }
     var exportPin by remember { mutableStateOf<String?>(null) }
 
+    fun onBackupSaved() {
+        Toast.makeText(context, context.getString(R.string.backup_success), Toast.LENGTH_SHORT).show()
+        exportPin = null
+        onDismiss()
+    }
+
+    fun onBackupFailed(err: String) {
+        Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+        exportPin = null
+    }
+
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
@@ -43,36 +56,72 @@ fun BackupAndRestoreDialog(
                 context = context,
                 uri = uri,
                 pin = exportPin,
-                onSuccess = {
-                    Toast.makeText(context, context.getString(R.string.backup_success), Toast.LENGTH_SHORT).show()
-                    exportPin = null
-                    onDismiss()
-                },
-                onError = { err ->
-                    Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
-                    exportPin = null
-                }
+                onSuccess = { onBackupSaved() },
+                onError = { err -> onBackupFailed(err) }
             )
         }
     }
 
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            val rawJson = BackupManager.readStringFromUri(context, uri)
-            if (rawJson != null) {
-                if (BackupManager.isFileEncrypted(rawJson)) {
-                    pendingEncryptedRawJson = rawJson
+    fun acceptImport(uri: Uri?) {
+        if (uri == null) return
+        val rawJson = BackupManager.readStringFromUri(context, uri)
+        if (rawJson != null) {
+            if (BackupManager.isFileEncrypted(rawJson)) {
+                pendingEncryptedRawJson = rawJson
+            } else {
+                val backup = BackupManager.parseBackupJson(rawJson)
+                if (backup != null && backup.devices.isNotEmpty()) {
+                    pendingImport = backup
                 } else {
-                    val backup = BackupManager.parseBackupJson(rawJson)
-                    if (backup != null && backup.devices.isNotEmpty()) {
-                        pendingImport = backup
-                    } else {
-                        Toast.makeText(context, context.getString(R.string.invalid_backup_file), Toast.LENGTH_SHORT).show()
-                    }
+                    Toast.makeText(context, context.getString(R.string.invalid_backup_file), Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
+
+    val importOpenLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri -> acceptImport(uri) }
+
+    val importGetLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri -> acceptImport(uri) }
+
+    fun launchImport() {
+        val opened = DocumentLaunch.open(
+            context = context,
+            mimeTypes = arrayOf("*/*"),
+            openDocument = importOpenLauncher,
+            getContent = importGetLauncher
+        )
+        if (!opened) {
+            Toast.makeText(context, context.getString(R.string.backup_picker_missing), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun launchExport(fileName: String) {
+        val opened = DocumentLaunch.create(
+            context = context,
+            title = fileName,
+            mimeType = "application/octet-stream",
+            createDocument = exportLauncher
+        )
+        if (!opened) {
+            viewModel.exportBackupToDownloads(
+                context = context,
+                fileName = fileName,
+                pin = exportPin,
+                onSuccess = { saved ->
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.backup_saved_to_downloads, saved),
+                        Toast.LENGTH_LONG
+                    ).show()
+                    exportPin = null
+                    onDismiss()
+                },
+                onError = { err -> onBackupFailed(err) }
+            )
         }
     }
 
@@ -107,7 +156,7 @@ fun BackupAndRestoreDialog(
                 }
 
                 OutlinedButton(
-                    onClick = { importLauncher.launch(arrayOf("*/*")) },
+                    onClick = { launchImport() },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 ) {
@@ -222,7 +271,7 @@ fun BackupAndRestoreDialog(
                         }
                         showExportOptionsDialog = false
                         val fileName = BackupManager.generateBackupFileName()
-                        exportLauncher.launch(fileName)
+                        launchExport(fileName)
                     }
                 ) {
                     Text(stringResource(R.string.save))
