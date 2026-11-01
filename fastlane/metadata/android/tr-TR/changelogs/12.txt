@@ -1,0 +1,1 @@
+SSH özel anahtarı artık metin olarak yapıştırılabiliyor. -----BEGIN ile başlayan blok da geçerli. DocumentsUI olmayan telefonlarda dosya seçici açılmasa da giriş çalışır. Dosya seçici varsa dosyadan seçmek duruyor. Sistem kaydet penceresi yoksa yedek İndirilenler klasörüne yazılır.

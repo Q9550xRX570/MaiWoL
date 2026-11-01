@@ -203,6 +203,8 @@
     <string name="export_backup">Export Backup</string>
     <string name="import_backup">Import Backup</string>
     <string name="backup_success">Backup exported successfully</string>
+    <string name="backup_picker_missing">This phone has no file picker. Open the .maiwol file from a file manager with MaiWoL.</string>
+    <string name="backup_saved_to_downloads">Backup saved to Downloads: %1$s</string>
     <string name="import_success">%1$d device(s) imported successfully</string>
     <string name="import_confirm_title">Import Backup</string>
     <string name="import_confirm_desc">Found %1$d device(s) and %2$d schedule(s) in this file. Add them to your list?</string>
@@ -250,14 +252,21 @@
 
     <string name="ssh_auth_method">SSH Sign-in</string>
     <string name="ssh_auth_password">Password</string>
-    <string name="ssh_auth_key">Key File</string>
-    <string name="ssh_key_select">Choose Key File</string>
-    <string name="ssh_key_change">Change Key File</string>
+    <string name="ssh_auth_key">Key</string>
+    <string name="ssh_key_select">Choose file</string>
+    <string name="ssh_key_change">Change file</string>
+    <string name="ssh_key_paste">Paste</string>
+    <string name="ssh_key_paste_label">Private key</string>
     <string name="ssh_key_loaded">%1$s key loaded</string>
     <string name="ssh_key_loaded_encrypted">%1$s key loaded (password protected)</string>
-    <string name="ssh_key_invalid">This file is not a valid SSH private key</string>
+    <string name="ssh_key_invalid">This is not a valid SSH private key</string>
+    <string name="ssh_key_public_not_private">This is a public key. Paste the private key, the block that starts with -----BEGIN.</string>
+    <string name="ssh_key_required">Enter an SSH private key</string>
     <string name="ssh_key_read_error">The file could not be read</string>
-    <string name="ssh_key_formats">OpenSSH, PEM and PuTTY (.ppk) keys are accepted, whatever the file extension.</string>
+    <string name="ssh_key_too_large">This text is too large to be an SSH private key</string>
+    <string name="ssh_key_clipboard_empty">The clipboard is empty</string>
+    <string name="ssh_key_picker_missing">This phone has no file picker (DocumentsUI is missing). Paste the key text below.</string>
+    <string name="ssh_key_formats">Paste the text that starts with -----BEGIN, or choose a file. OpenSSH, PEM and PuTTY (.ppk) all work.</string>
     <string name="ssh_key_passphrase">Key Passphrase (if any)</string>
     <string name="ssh_test">Test SSH Sign-in</string>
     <string name="ssh_test_ok">SSH sign-in works (%1$s)</string>

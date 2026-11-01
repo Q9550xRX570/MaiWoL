@@ -34,7 +34,7 @@ After a wake, MaiWoL asks again with the same check. An answer turns the card on
 
 Remote shutdown is off until you turn it on.
 
-- SSH runs the command you write. The default is `shutdown /s /f /t 0`. Password or a key file both work. OpenSSH, PEM, and PuTTY `.ppk` are recognized by their contents, whatever the file extension is. You can test the sign-in without powering the machine off.
+- SSH runs the command you write. The default is `shutdown /s /f /t 0`. Password works, and so does a private key: paste the text that starts with `-----BEGIN`, or choose a file. Phones without DocumentsUI can still sign in with the pasted text. OpenSSH, PEM, and PuTTY `.ppk` are recognized by their contents. You can test the sign-in without powering the machine off.
 - HTTP GET and HTTP POST call a URL you provide, for a script or a smart plug.
 
 On Wi-Fi at home the app uses the local address. On mobile data it uses the WAN or DDNS address.

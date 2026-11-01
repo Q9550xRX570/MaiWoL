@@ -1,5 +1,8 @@
 package com.mai.wol.ui.device
 
+import android.content.ClipboardManager
+import android.content.Context
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -17,8 +20,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -28,7 +34,10 @@ import com.mai.wol.network.NetworkScanner
 import com.mai.wol.network.ScannedDevice
 import com.mai.wol.network.ShutdownManager
 import com.mai.wol.network.SshKeyInfo
+import com.mai.wol.network.SshKeyProblem
+import com.mai.wol.network.SshKeyText
 import com.mai.wol.network.StatusResult
+import com.mai.wol.ui.DocumentLaunch
 import com.mai.wol.ui.home.DeviceStatusBadge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,6 +82,8 @@ fun AddOrEditDeviceDialog(
     var sshKeyPassphrase by remember { mutableStateOf(deviceToEdit?.sshKeyPassphrase ?: "") }
     var sshKeyInfo by remember { mutableStateOf<SshKeyInfo?>(null) }
     var sshKeyError by remember { mutableStateOf<String?>(null) }
+    var pickerMissing by remember { mutableStateOf(false) }
+    var forceKeyCheck by remember { mutableStateOf(false) }
 
     // Şifre Göster / Gizle State'i
     var isPasswordVisible by remember { mutableStateOf(false) }
@@ -89,38 +100,97 @@ fun AddOrEditDeviceDialog(
         if (sshTestMessage != null) scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    LaunchedEffect(Unit) {
-        val existingKey = deviceToEdit?.sshPrivateKey.orEmpty()
-        if (existingKey.isNotBlank()) {
-            sshKeyInfo = withContext(Dispatchers.IO) { ShutdownManager.inspectPrivateKey(existingKey) }
+    fun keyProblemText(problem: SshKeyProblem): String = when (problem) {
+        SshKeyProblem.PUBLIC_KEY -> context.getString(R.string.ssh_key_public_not_private)
+        SshKeyProblem.EMPTY -> context.getString(R.string.ssh_key_required)
+        SshKeyProblem.INVALID -> context.getString(R.string.ssh_key_invalid)
+        SshKeyProblem.NONE -> ""
+    }
+
+    LaunchedEffect(sshPrivateKey, forceKeyCheck) {
+        val current = sshPrivateKey
+        if (current.isBlank()) {
+            sshKeyInfo = null
+            sshKeyError = null
+            return@LaunchedEffect
+        }
+        val shouldCheck = forceKeyCheck || SshKeyText.looksComplete(current)
+        if (!shouldCheck) {
+            sshKeyInfo = null
+            sshKeyError = null
+            return@LaunchedEffect
+        }
+        val info = withContext(Dispatchers.IO) { ShutdownManager.inspectPrivateKey(current) }
+        if (sshPrivateKey != current) return@LaunchedEffect
+        if (info.valid) {
+            val clean = SshKeyText.extract(current)
+            sshKeyInfo = info
+            sshKeyError = null
+            pickerMissing = false
+            forceKeyCheck = false
+            if (clean != current) sshPrivateKey = clean
+        } else {
+            sshKeyInfo = null
+            sshKeyError = keyProblemText(info.problem)
+        }
+    }
+
+    fun acceptKeyText(text: String?, fromFile: Boolean) {
+        if (text == null) {
+            sshKeyError = context.getString(R.string.ssh_key_read_error)
+            return
+        }
+        if (fromFile && text.isBlank()) {
+            sshKeyError = context.getString(R.string.ssh_key_invalid)
+            sshKeyInfo = null
+            return
+        }
+        if (text.length > MAX_KEY_FILE_BYTES) {
+            sshKeyError = context.getString(R.string.ssh_key_too_large)
+            sshKeyInfo = null
+            return
+        }
+        sshTestMessage = null
+        pickerMissing = false
+        forceKeyCheck = fromFile || SshKeyText.looksComplete(text)
+        sshPrivateKey = text
+    }
+
+    fun readPickedKey(uri: Uri?) {
+        if (uri == null) return
+        scope.launch {
+            val text = withContext(Dispatchers.IO) { readKeyFromUri(context, uri) }
+            acceptKeyText(text, fromFile = true)
         }
     }
 
     val keyFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            val text = withContext(Dispatchers.IO) {
-                runCatching {
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        val bytes = input.readBytes()
-                        if (bytes.size > MAX_KEY_FILE_BYTES) null else String(bytes, Charsets.UTF_8)
-                    }
-                }.getOrNull()
-            }
-            if (text == null) {
-                sshKeyError = context.getString(R.string.ssh_key_read_error)
-                return@launch
-            }
-            val info = withContext(Dispatchers.IO) { ShutdownManager.inspectPrivateKey(text) }
-            if (info.valid) {
-                sshPrivateKey = text
-                sshKeyInfo = info
-                sshKeyError = null
-                sshTestMessage = null
-            } else {
-                sshKeyError = context.getString(R.string.ssh_key_invalid)
-            }
+        readPickedKey(uri)
+    }
+    val keyContentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        readPickedKey(uri)
+    }
+
+    fun launchKeyPicker() {
+        val opened = DocumentLaunch.open(
+            context = context,
+            mimeTypes = arrayOf("*/*"),
+            openDocument = keyFileLauncher,
+            getContent = keyContentLauncher
+        )
+        if (!opened) {
+            pickerMissing = true
+            sshKeyError = null
         }
+    }
+
+    fun pasteKeyFromClipboard() {
+        val text = clipboardText(context)
+        if (text.isNullOrBlank()) {
+            sshKeyError = context.getString(R.string.ssh_key_clipboard_empty)
+            return
+        }
+        acceptKeyText(text, fromFile = false)
     }
 
     fun buildDevice(): DeviceEntity {
@@ -141,7 +211,7 @@ fun AddOrEditDeviceDialog(
             shutdownCommand = shutdownCommand,
             shutdownHttpUrl = shutdownHttpUrl.trim(),
             sshAuthType = sshAuthType,
-            sshPrivateKey = sshPrivateKey,
+            sshPrivateKey = SshKeyText.extract(sshPrivateKey),
             sshKeyPassphrase = sshKeyPassphrase
         )
     }
@@ -358,17 +428,63 @@ fun AddOrEditDeviceDialog(
                     }
 
                     if (sshAuthType == "KEY") {
-                        OutlinedButton(
-                            onClick = { keyFileLauncher.launch(arrayOf("*/*")) },
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                if (sshPrivateKey.isBlank()) stringResource(R.string.ssh_key_select)
-                                else stringResource(R.string.ssh_key_change)
-                            )
+                            OutlinedButton(
+                                onClick = { launchKeyPicker() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (sshPrivateKey.isBlank()) stringResource(R.string.ssh_key_select)
+                                    else stringResource(R.string.ssh_key_change),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { pasteKeyFromClipboard() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(R.string.ssh_key_paste),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
+
+                        OutlinedTextField(
+                            value = sshPrivateKey,
+                            onValueChange = { incoming ->
+                                sshTestMessage = null
+                                pickerMissing = false
+                                if (incoming.length > MAX_KEY_FILE_BYTES) {
+                                    sshKeyError = context.getString(R.string.ssh_key_too_large)
+                                    sshKeyInfo = null
+                                } else {
+                                    forceKeyCheck = false
+                                    sshPrivateKey = incoming
+                                }
+                            },
+                            label = { Text(stringResource(R.string.ssh_key_paste_label)) },
+                            placeholder = { Text("-----BEGIN OPENSSH PRIVATE KEY-----") },
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.None,
+                                autoCorrectEnabled = false
+                            ),
+                            minLines = 4,
+                            maxLines = 8,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(148.dp)
+                        )
 
                         val info = sshKeyInfo
                         when {
@@ -382,6 +498,11 @@ fun AddOrEditDeviceDialog(
                                 else stringResource(R.string.ssh_key_loaded, info.typeLabel),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
+                            )
+                            pickerMissing -> Text(
+                                text = stringResource(R.string.ssh_key_picker_missing),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             else -> Text(
                                 text = stringResource(R.string.ssh_key_formats),
@@ -550,8 +671,22 @@ fun AddOrEditDeviceDialog(
                     }
                     TextButton(
                         onClick = {
-                            if (name.isNotBlank() && mac.isNotBlank()) {
-                                onConfirm(buildDevice())
+                            if (name.isBlank() || mac.isBlank()) return@TextButton
+                            scope.launch {
+                                val device = buildDevice()
+                                if (device.shutdownType == "SSH" && device.sshAuthType.equals("KEY", ignoreCase = true)) {
+                                    val info = withContext(Dispatchers.IO) {
+                                        ShutdownManager.inspectPrivateKey(device.sshPrivateKey)
+                                    }
+                                    if (!info.valid) {
+                                        sshKeyInfo = null
+                                        sshKeyError = keyProblemText(info.problem)
+                                        return@launch
+                                    }
+                                    sshKeyInfo = info
+                                    sshKeyError = null
+                                }
+                                onConfirm(device)
                             }
                         }
                     ) {
@@ -686,4 +821,22 @@ fun ScanNetworkBottomSheet(
             }
         }
     }
+}
+
+private fun readKeyFromUri(context: Context, uri: Uri): String? {
+    return runCatching {
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            val bytes = SshKeyText.readAtMost(input, MAX_KEY_FILE_BYTES) ?: return null
+            SshKeyText.decode(bytes)
+        }
+    }.getOrNull()
+}
+
+private fun clipboardText(context: Context): String? {
+    return runCatching {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return null
+        val clip = clipboard.primaryClip ?: return null
+        if (clip.itemCount == 0) return null
+        clip.getItemAt(0).coerceToText(context)?.toString()
+    }.getOrNull()
 }

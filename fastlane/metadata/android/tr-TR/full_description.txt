@@ -1,6 +1,6 @@
 MaiWoL, bilgisayarı telefondan uyandırır. Sihirli paket telefondan senin ağına gider. Arada hesap, reklam ve izleyici yoktur.
 
-2.2.5'te yeni: Kart açık, kapalı ya da ulaşılamadı der. Seçtiğin paket sayısı yerel ağa gider. WAN ya da DDNS adresi kayıtlıysa aynı sayı oraya da gider. Sürüm satırı 16 Ekim Edition yazar.
+2.2.6'da yeni: SSH, -----BEGIN ile başlayan özel anahtar metnini de kabul eder. DocumentsUI olmayan telefonlarda dosya seçici açılmasa da giriş çalışır. Dosya seçici varsa dosyadan seçmek duruyor. Sürüm satırı 1 Kasım Edition yazar.
 
 Neler var:
 • Bir bilgisayarı ya da bir gruptakilerin hepsini uyandırma
@@ -8,7 +8,7 @@ Neler var:
 • İsteğe bağlı SecureOn parolası
 • Açık, kapalı ya da ulaşılamadı
 • İstersen SSH ya da HTTP webhook ile kapatma
-• SSH'ye parola ya da anahtar dosyasıyla girme ve önce deneme
+• SSH'ye parola ya da özel anahtarla girme (-----BEGIN metnini yapıştır veya dosya seç) ve önce deneme
 • Ana ekran widget'ları, Hızlı Ayarlar karosu ve başlatıcı kısayolları
 • Tek seferlik ya da haftalık alarm. Telefon yeniden açılınca alarmlar geri gelir
 • Tasker, MacroDroid ve adb intent'leri

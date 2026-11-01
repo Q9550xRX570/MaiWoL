@@ -9,9 +9,9 @@ android {
     namespace = "com.mai.wol"
     compileSdk = 35
 
-    val appVersionName = "2.2.5"
-    val octoberEdition = "16 October Edition"
-    val ekimEdition = "16 Ekim Edition"
+    val appVersionName = "2.2.6"
+    val edition = "1 November Edition"
+    val editionTr = "1 Kasım Edition"
 
     defaultConfig {
         applicationId = "com.mai.wol"
@@ -19,10 +19,10 @@ android {
         minSdk = 24
         targetSdk = 35
 
-        versionCode = 11
+        versionCode = 12
         versionName = appVersionName
-        resValue("string", "version_edition", "v$appVersionName $octoberEdition")
-        resValue("string", "version_edition_tr", "v$appVersionName $ekimEdition")
+        resValue("string", "version_edition", "v$appVersionName $edition")
+        resValue("string", "version_edition_tr", "v$appVersionName $editionTr")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

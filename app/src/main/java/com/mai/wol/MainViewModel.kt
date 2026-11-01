@@ -453,6 +453,30 @@ class MainViewModel(
         }
     }
 
+    fun exportBackupToDownloads(
+        context: Context,
+        fileName: String,
+        pin: String? = null,
+        onSuccess: (String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val currentDevices = deviceDao.getAllDevices().firstOrNull() ?: emptyList()
+                val currentSchedules = scheduleDao.getAllSchedules().firstOrNull() ?: emptyList()
+                val jsonContent = BackupManager.exportBackupToJson(currentDevices, currentSchedules, pin)
+                val saved = BackupManager.writeToDownloads(context, fileName, jsonContent)
+                if (saved != null) {
+                    onSuccess(saved)
+                } else {
+                    onError("Dosya kaydedilemedi")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Hata oluştu")
+            }
+        }
+    }
+
     fun exportBackup(
         context: Context,
         uri: Uri,

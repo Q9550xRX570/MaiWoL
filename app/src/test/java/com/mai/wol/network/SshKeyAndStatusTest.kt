@@ -2,8 +2,10 @@ package com.mai.wol.network
 
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.KeyPair
+import com.mai.wol.data.DeviceEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayOutputStream
@@ -79,6 +81,112 @@ class SshKeyAndStatusTest {
     fun rejectsTextThatIsNotAKey() {
         assertFalse(ShutdownManager.inspectPrivateKey("merhaba dunya").valid)
         assertFalse(ShutdownManager.inspectPrivateKey("").valid)
+        assertEquals(SshKeyProblem.EMPTY, ShutdownManager.inspectPrivateKey("   ").problem)
+    }
+
+    @Test
+    fun privateKeyIsUsedWhenThePublicKeyIsPastedAboveIt() {
+        val key = fixture("id_ed25519").trim()
+        val pasted = fixture("id_ed25519.pub").trim() + "\n\n" + key
+
+        assertEquals(key, SshKeyText.extract(pasted))
+        assertTrue(ShutdownManager.inspectPrivateKey(pasted).valid)
+        assertEquals("Ed25519", ShutdownManager.inspectPrivateKey(pasted).typeLabel)
+    }
+
+    @Test
+    fun pastedKeyWithNotesAroundItIsAccepted() {
+        val key = fixture("id_ed25519").trim()
+        val pasted = "anahtar bu:\n\n$key\n\nkopyala bitti"
+
+        assertEquals(key, SshKeyText.extract(pasted))
+        val info = ShutdownManager.inspectPrivateKey(pasted)
+        assertTrue(info.valid)
+        assertEquals("Ed25519", info.typeLabel)
+        assertEquals(SshKeyProblem.NONE, info.problem)
+    }
+
+    @Test
+    fun quotedAndBomProtectedKeyStillLoads() {
+        val key = fixture("id_ed25519_protected").trim()
+        val pasted = "\uFEFF\"${key.replace("\n", "\r\n")}\""
+
+        val info = ShutdownManager.inspectPrivateKey(pasted)
+        assertTrue(info.valid)
+        assertTrue(info.encrypted)
+    }
+
+    @Test
+    fun publicKeyNeverOpensAConnection() = runBlocking {
+        val device = DeviceEntity(
+            name = "t",
+            macAddress = "AA:BB:CC:DD:EE:FF",
+            localIp = "127.0.0.1",
+            shutdownType = "SSH",
+            shutdownUsername = "erdem",
+            sshAuthType = "KEY",
+            sshPrivateKey = "not the key\n${fixture("id_ed25519.pub")}"
+        )
+
+        val result = ShutdownManager.testSshConnection(device)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("açık anahtar"))
+    }
+
+    @Test
+    fun missingKeyIsRejectedBeforeAConnection() = runBlocking {
+        val device = DeviceEntity(
+            name = "t",
+            macAddress = "AA:BB:CC:DD:EE:FF",
+            localIp = "127.0.0.1",
+            shutdownType = "SSH",
+            shutdownUsername = "erdem",
+            sshAuthType = "KEY",
+            sshPrivateKey = "   "
+        )
+
+        val result = ShutdownManager.testSshConnection(device)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("girilmedi"))
+    }
+
+    @Test
+    fun publicKeyIsRejected() {
+        val info = ShutdownManager.inspectPrivateKey(fixture("id_ed25519.pub"))
+
+        assertFalse(info.valid)
+        assertEquals(SshKeyProblem.PUBLIC_KEY, info.problem)
+        assertTrue(SshKeyText.looksComplete(fixture("id_ed25519.pub")))
+    }
+
+    @Test
+    fun unfinishedBeginLineIsNotTreatedAsComplete() {
+        assertFalse(SshKeyText.looksComplete("-----BEGIN OPENSSH PRIVATE KEY-----"))
+        assertTrue(SshKeyText.looksComplete(fixture("id_ed25519")))
+    }
+
+    @Test
+    fun utf16BytesDecodeToTheSameKey() {
+        val key = fixture("id_ed25519")
+        val decoded = SshKeyText.decode(key.toByteArray(Charsets.UTF_16LE))
+
+        assertTrue(decoded.contains("BEGIN OPENSSH PRIVATE KEY"))
+        assertTrue(ShutdownManager.inspectPrivateKey(decoded).valid)
+    }
+
+    @Test
+    fun puttyHeaderIsExtractedFromSurroundingText() {
+        val raw = "not a key\nPuTTY-User-Key-File-2: ssh-ed25519\nEncryption: none\n"
+        assertTrue(SshKeyText.extract(raw).startsWith("PuTTY-User-Key-File-2:"))
+        assertTrue(SshKeyText.looksComplete(raw))
+    }
+
+    @Test
+    fun readAtMostRejectsOversizedInput() {
+        assertNull(SshKeyText.readAtMost("abcdef".byteInputStream(), 3))
+        assertEquals("abc", SshKeyText.readAtMost("abc".byteInputStream(), 3)?.toString(Charsets.UTF_8))
     }
 
     @Test

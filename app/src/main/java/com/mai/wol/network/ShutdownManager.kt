@@ -13,10 +13,18 @@ import java.net.Socket
 import java.net.URL
 import java.util.Properties
 
+enum class SshKeyProblem {
+    NONE,
+    EMPTY,
+    PUBLIC_KEY,
+    INVALID
+}
+
 data class SshKeyInfo(
     val valid: Boolean,
     val typeLabel: String,
-    val encrypted: Boolean
+    val encrypted: Boolean,
+    val problem: SshKeyProblem = if (valid) SshKeyProblem.NONE else SshKeyProblem.INVALID
 )
 
 object ShutdownManager {
@@ -37,9 +45,13 @@ object ShutdownManager {
     }
 
     fun inspectPrivateKey(keyText: String): SshKeyInfo {
-        if (keyText.isBlank()) return SshKeyInfo(false, "", false)
+        val extracted = SshKeyText.extract(keyText)
+        if (extracted.isBlank()) return SshKeyInfo(false, "", false, SshKeyProblem.EMPTY)
+        if (SshKeyText.looksLikePublicKey(extracted)) {
+            return SshKeyInfo(false, "", false, SshKeyProblem.PUBLIC_KEY)
+        }
         return try {
-            val keyPair = KeyPair.load(JSch(), keyText.toByteArray(Charsets.UTF_8), null)
+            val keyPair = KeyPair.load(JSch(), extracted.toByteArray(Charsets.UTF_8), null)
             val label = when (keyPair.keyType) {
                 KeyPair.RSA -> "RSA"
                 KeyPair.DSA -> "DSA"
@@ -50,9 +62,9 @@ object ShutdownManager {
             }
             val encrypted = keyPair.isEncrypted
             keyPair.dispose()
-            SshKeyInfo(true, label, encrypted)
+            SshKeyInfo(true, label, encrypted, SshKeyProblem.NONE)
         } catch (_: Exception) {
-            SshKeyInfo(false, "", false)
+            SshKeyInfo(false, "", false, SshKeyProblem.INVALID)
         }
     }
 
@@ -69,12 +81,16 @@ object ShutdownManager {
         if (username.isBlank()) {
             return Result.failure(Exception("SSH Kullanıcı adı boş bırakılamaz."))
         }
-        if (useKey) {
-            if (device.sshPrivateKey.isBlank()) {
-                return Result.failure(Exception("SSH anahtar dosyası yüklenmedi."))
+        val keyBytes = if (useKey) {
+            val material = SshKeyText.extract(device.sshPrivateKey)
+            if (material.isBlank()) {
+                return Result.failure(Exception("SSH anahtarı girilmedi."))
+            }
+            if (SshKeyText.looksLikePublicKey(material)) {
+                return Result.failure(Exception("Bu bir açık anahtar. -----BEGIN ile başlayan özel anahtarı girin."))
             }
             val keyPair = try {
-                KeyPair.load(JSch(), device.sshPrivateKey.toByteArray(Charsets.UTF_8), null)
+                KeyPair.load(JSch(), material.toByteArray(Charsets.UTF_8), null)
             } catch (_: Exception) {
                 return Result.failure(Exception("SSH anahtarı okunamadı."))
             }
@@ -83,6 +99,9 @@ object ShutdownManager {
             if (!unlocked) {
                 return Result.failure(Exception("SSH anahtar parolası hatalı veya eksik."))
             }
+            material.toByteArray(Charsets.UTF_8)
+        } else {
+            null
         }
 
         val candidateHosts = listOfNotNull(
@@ -104,7 +123,7 @@ object ShutdownManager {
                     continue
                 }
 
-                session = openSession(device, username, host, port, useKey)
+                session = openSession(device, username, host, port, keyBytes)
                 session.connect(6000)
 
                 if (command == null) {
@@ -129,7 +148,7 @@ object ShutdownManager {
                 val err = e.localizedMessage ?: e.message ?: ""
                 lastErrorMsg = when {
                     err.contains("Auth fail", ignoreCase = true) || err.contains("Auth cancel", ignoreCase = true) ->
-                        if (useKey) "SSH anahtarı reddedildi!" else "Kullanıcı adı veya Şifre hatalı!"
+                        if (keyBytes != null) "SSH anahtarı reddedildi!" else "Kullanıcı adı veya Şifre hatalı!"
                     err.contains("invalid privatekey", ignoreCase = true) ->
                         "SSH anahtarı okunamadı veya parola hatalı."
                     else -> "SSH Hatası ($host): $err"
@@ -146,22 +165,22 @@ object ShutdownManager {
         username: String,
         host: String,
         port: Int,
-        useKey: Boolean
+        keyBytes: ByteArray?
     ): Session {
         val jsch = JSch()
-        if (useKey) {
+        if (keyBytes != null) {
             val passphrase = device.sshKeyPassphrase.takeIf { it.isNotEmpty() }?.toByteArray(Charsets.UTF_8)
-            jsch.addIdentity("maiwol", device.sshPrivateKey.toByteArray(Charsets.UTF_8), null, passphrase)
+            jsch.addIdentity("maiwol", keyBytes, null, passphrase)
         }
 
         val session = jsch.getSession(username, host, port)
-        if (!useKey) {
+        if (keyBytes == null) {
             session.setPassword(device.shutdownPassword)
         }
 
         val config = Properties()
         config["StrictHostKeyChecking"] = "no"
-        config["PreferredAuthentications"] = if (useKey) "publickey" else "password,keyboard-interactive"
+        config["PreferredAuthentications"] = if (keyBytes != null) "publickey" else "password,keyboard-interactive"
         session.setConfig(config)
         session.timeout = 6000
         return session
